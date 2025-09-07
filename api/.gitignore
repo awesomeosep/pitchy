@@ -1,0 +1,9 @@
+venv_spleeter_test_5/
+.env
+
+# python project
+
+__pycache__/
+input/
+output/
+pretrained_models/
