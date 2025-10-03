@@ -17,7 +17,6 @@ class _ListenState extends State<Listen> {
   final player = AudioPlayer();
   bool currentlyPlaying = false;
   StreamSubscription<PlayerState>? _playerStateSub;
-  // pitch represented as semitones (half-steps). 0 = original pitch
   int _semitones = 0;
   double _volume = 1.0;
   double _lastVolume = 1.0;
@@ -155,12 +154,9 @@ class _ListenState extends State<Listen> {
             Card(
               margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.fromLTRB(16.0, 8, 16, 16),
                 child: Column(
                   children: [
-                    // SizedBox(height: 8),
-
-                    // Pitch control in semitone (half-step) increments
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -170,14 +166,14 @@ class _ListenState extends State<Listen> {
                             children: [
                               Text('Pitch (semitones)', style: TextStyle(fontWeight: FontWeight.w600)),
                               Slider(
-                                value: _semitones.toDouble().clamp(-24.0, 24.0),
-                                min: -24,
-                                max: 24,
-                                divisions: 48,
+                                value: _semitones.toDouble().clamp(-12.0, 12.0),
+                                min: -12,
+                                max: 12,
+                                divisions: 24,
                                 label: '${_semitones >= 0 ? '+' : ''}${_semitones}',
                                 onChanged: (v) {
                                   setState(() {
-                                    _semitones = v.round();
+                                    _semitones = v.toDouble().clamp(-12.0, 12.0).round();
                                   });
                                   player.setPitch(_pitchFromSemitones(_semitones));
                                 },
@@ -192,7 +188,7 @@ class _ListenState extends State<Listen> {
                             IconButton(
                               onPressed: () {
                                 setState(() {
-                                  _semitones = (_semitones + 1).clamp(-24, 24);
+                                  _semitones = (_semitones + 1).clamp(-12, 12);
                                 });
                                 player.setPitch(_pitchFromSemitones(_semitones));
                               },
@@ -207,7 +203,7 @@ class _ListenState extends State<Listen> {
                             IconButton(
                               onPressed: () {
                                 setState(() {
-                                  _semitones = (_semitones - 1).clamp(-24, 24);
+                                  _semitones = (_semitones - 1).clamp(-12, 12);
                                 });
                                 player.setPitch(_pitchFromSemitones(_semitones));
                               },
