@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:spleeter_flutter_app/types/SongData.dart';
 
 class HomeList extends StatefulWidget {
   const HomeList({super.key});
@@ -13,14 +15,64 @@ class HomeList extends StatefulWidget {
 class _HomeListState extends State<HomeList> {
   bool gotFiles = false;
   List<FileSystemEntity> splitSongFiles = [];
+  List<DataFile> splitSongData = [];
+
+  Future<void> deleteAll() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final dataDirectoryPath = "${directory.path}/songs/data";
+    final dataDirectory = Directory(dataDirectoryPath);
+    if (await dataDirectory.exists()) {
+      await for (FileSystemEntity entity in dataDirectory.list()) {
+        if (entity is File) {
+          await entity.delete();
+        }
+      }
+      print('All files in the folder deleted successfully!');
+    } else {
+      print('Folder does not exist.');
+    }
+
+    final fileDirectoryPath = "${directory.path}/songs/audio_files";
+    final fileDirectory = Directory(fileDirectoryPath);
+    if (await fileDirectory.exists()) {
+      await for (FileSystemEntity entity in fileDirectory.list()) {
+        if (entity is File) {
+          await entity.delete();
+        }
+      }
+      print('All files in the folder deleted successfully! 2');
+    } else {
+      print('Folder does not exist. 2');
+    }
+  }
 
   Future<void> getFiles() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final List<FileSystemEntity> files = directory.listSync(recursive: true);
     setState(() {
-      splitSongFiles = files.where((entity) => entity is File && entity.path.endsWith(".wav")).toList();
+      splitSongData = [];
+      splitSongFiles = [];
+    });
+
+    final directory = await getApplicationDocumentsDirectory();
+    final dataDirectoryPath = "${directory.path}/songs/data";
+    final dataDirectory = Directory(dataDirectoryPath);
+    final List<FileSystemEntity> files = dataDirectory.listSync(recursive: true);
+    setState(() {
+      splitSongFiles = files.where((entity) => entity is File && entity.path.endsWith(".txt")).toList();
+    });
+    for (int i = 0; i < splitSongFiles.length; i++) {
+      File thisFile = File(splitSongFiles[i].path);
+      String dataString = await thisFile.readAsString();
+      dynamic dataJson = jsonDecode(dataString);
+      print(dataJson);
+      DataFile fileData = DataFile.classFromTxt(dataJson);
+      setState(() {
+        splitSongData.add(fileData);
+      });
+    }
+    setState(() {
       gotFiles = true;
     });
+    print(splitSongData);
   }
 
   @override
@@ -37,7 +89,7 @@ class _HomeListState extends State<HomeList> {
           ),
         ],
       ),
-      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: Text("Home")),
+      appBar: AppBar(automaticallyImplyLeading: false, backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: Text("Home")),
       body: Padding(
         padding: EdgeInsetsGeometry.all(16.0),
         child: SingleChildScrollView(
@@ -54,20 +106,28 @@ class _HomeListState extends State<HomeList> {
                     },
                     icon: Icon(Icons.refresh),
                   ),
+                  IconButton(
+                    onPressed: () async {
+                      await deleteAll();
+                    },
+                    icon: Icon(Icons.delete),
+                  ),
                 ],
               ),
               SizedBox(height: 16),
               (gotFiles)
-                  ? Column(
-                      children: splitSongFiles.map((file) {
-                        return ListTile(
-                          leading: Icon(Icons.music_note),
-                          title: Text(file.path.split('/').last),
-                          onTap: () => {Navigator.pushNamed(context, '/listen', arguments: File(file.path))},
-                        );
-                      }).toList(),
-                    )
-                  : Text("No files loaded"),
+                  ? (splitSongData.isNotEmpty
+                        ? Column(
+                            children: splitSongData.map((file) {
+                              return ListTile(
+                                leading: Icon(Icons.music_note),
+                                title: Text(file.fileName),
+                                onTap: () => {Navigator.pushNamed(context, '/listen', arguments: file.fileId)},
+                              );
+                            }).toList(),
+                          )
+                        : Text("No files found"))
+                  : Text("Reload to get files"),
             ],
           ),
         ),
