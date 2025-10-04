@@ -28,6 +28,7 @@ class _HomeListState extends State<HomeList> {
         }
       }
       print('All files in the folder deleted successfully!');
+      getFiles();
     } else {
       print('Folder does not exist.');
     }
@@ -89,7 +90,11 @@ class _HomeListState extends State<HomeList> {
           ),
         ],
       ),
-      appBar: AppBar(automaticallyImplyLeading: false, backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: Text("Home")),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text("Home"),
+      ),
       body: Padding(
         padding: EdgeInsetsGeometry.all(16.0),
         child: SingleChildScrollView(
@@ -97,16 +102,23 @@ class _HomeListState extends State<HomeList> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                direction: Axis.horizontal,
                 children: [
                   Text("Your songs:", style: TextStyle(fontSize: 18.0)),
-                  IconButton(
+                  FilledButton.tonalIcon(
+                    style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0))),
+                    label: Text("Refresh"),
                     onPressed: () async {
                       await getFiles();
                     },
                     icon: Icon(Icons.refresh),
                   ),
-                  IconButton(
+                  FilledButton.tonalIcon(
+                    style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0))),
+                    label: Text("Delete All"),
                     onPressed: () async {
                       await deleteAll();
                     },

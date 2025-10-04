@@ -53,7 +53,7 @@ class _ListenState extends State<Listen> {
             setState(() {
               trackFiles = [];
             });
-            String dataString = await dataFile!.readAsString();
+            String dataString = await dataFile.readAsString();
             dynamic dataJson = jsonDecode(dataString);
             setState(() {
               origSongData = DataFile.classFromTxt(dataJson);
@@ -117,30 +117,45 @@ class _ListenState extends State<Listen> {
           child: Column(
             children: [
               SizedBox(height: 16),
-              DropdownMenu<String>(
-                initialSelection: "0",
-                controller: trackController,
-                requestFocusOnTap: true,
-                label: const Text("Track"),
-                onSelected: (String? newTrack) {
-                  if (newTrack != null) {
-                    changeTrack(int.parse(newTrack));
-                    print(newTrack);
-                  }
-                },
-                dropdownMenuEntries: List.from(
-                  origSongData!.songPaths.map(
-                    (item) => DropdownMenuEntry<String>(
-                      value: origSongData!.songPaths.indexOf(item).toString(),
-                      label: item.split(".").sublist(0, (item.split(".").length - 1)).last.split("_").last,
-                    ),
-                  ),
-                ),
-              ),
+              origSongData != null
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Track:"),
+                        DropdownButton<String>(
+                          isDense: true,
+                          value: trackIndex.toString(),
+                          icon: const Icon(Icons.keyboard_arrow_down),
+                          elevation: 16,
+                          underline: Container(height: 1, color: Colors.black),
+                          onChanged: (String? newTrack) {
+                            if (newTrack != null) {
+                              changeTrack(int.parse(newTrack));
+                              print(newTrack);
+                            }
+                          },
+                          items: List.from(
+                            origSongData!.songPaths.map(
+                              (item) => DropdownMenuItem<String>(
+                                value: origSongData!.songPaths.indexOf(item).toString(),
+                                child: Text(
+                                  item.split(".").sublist(0, (item.split(".").length - 1)).last.split("_").last,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : SizedBox(),
               SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [Icon(Icons.audio_file), SizedBox(width: 8), Text(origSongData?.fileName ?? 'File not found')],
+                children: [
+                  Icon(Icons.audio_file),
+                  SizedBox(width: 8),
+                  Text(origSongData?.fileName ?? 'File not found'),
+                ],
               ),
               SizedBox(height: 12),
               StreamBuilder<Duration?>(
@@ -172,7 +187,7 @@ class _ListenState extends State<Listen> {
                   );
                 },
               ),
-          
+
               // SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -189,9 +204,9 @@ class _ListenState extends State<Listen> {
                   ),
                 ],
               ),
-          
+
               SizedBox(height: 16),
-          
+
               Card(
                 margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Padding(
@@ -254,7 +269,7 @@ class _ListenState extends State<Listen> {
                           ),
                         ],
                       ),
-          
+
                       // Volume control
                       Row(
                         children: [
