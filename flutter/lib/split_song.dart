@@ -1,11 +1,16 @@
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math';
+// import 'dart:typed_data';
 
-import 'package:audioplayers/audioplayers.dart';
+import 'package:archive/archive.dart';
+// import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
+import 'package:spleeter_flutter_app/types/SongData.dart';
 
 class SplitSong extends StatefulWidget {
   const SplitSong({super.key});
@@ -18,9 +23,10 @@ class _SplitSongState extends State<SplitSong> {
   File? pickedFile;
   int step = 0;
   String outputType = "accompaniment";
-  Uint8List? resultBytes;
-  final player = AudioPlayer();
+  List<int>? zipBytes;
+  // final player = AudioPlayer();
   bool currentlyPlaying = false;
+  bool loadingSplit = false;
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.audio);
@@ -37,6 +43,9 @@ class _SplitSongState extends State<SplitSong> {
 
   Future<void> stripFile() async {
     print("starting request");
+    setState(() {
+      loadingSplit = true;
+    });
     var request = http.MultipartRequest('POST', Uri.parse("http://192.168.1.159:8000/songs/"));
 
     request.files.add(await http.MultipartFile.fromPath('song_file', pickedFile!.path));
@@ -46,10 +55,12 @@ class _SplitSongState extends State<SplitSong> {
 
       if (response.statusCode == 200) {
         print('File sent successfully!');
-        var bytes = await response.stream.toBytes();
+
+        var outBytes = await response.stream.toBytes();
+
         setState(() {
+          zipBytes = outBytes;
           step = 2;
-          resultBytes = bytes;
         });
       } else {
         print('File sent failed with status: ${response.statusCode}');
@@ -57,16 +68,71 @@ class _SplitSongState extends State<SplitSong> {
     } catch (e) {
       print('Error sending file: $e');
     }
+    setState(() {
+      loadingSplit = false;
+    });
   }
 
   Future<void> saveFile() async {
+    final Random random = Random();
+
     final directory = await getApplicationDocumentsDirectory();
-    final uploadedFileName = pickedFile!.path.split('/').last.split(".");
-    uploadedFileName.removeLast();
-    final filePath = '${directory.path}/${uploadedFileName.join("_")}.wav';
-    print(filePath);
-    final newFile = File(filePath);
-    await newFile.writeAsBytes(resultBytes!);
+
+    final pathitems = pickedFile!.path.split('/').last.split(".");
+    final origFileExt = pathitems.last;
+    pathitems.removeLast();
+    final origFileName = pathitems.join(".");
+
+    DataFile songData = DataFile(
+      random.nextInt(10000).toString(),
+      origFileName,
+      "",
+      [],
+      "2stems",
+      DateTime.now(),
+      SongSettings(1.0, 1.0),
+    );
+
+    // extract zip
+    final extractPath = p.join(directory.path, 'songs/audio_files');
+    final extractDir = Directory(extractPath);
+    if (!await extractDir.exists()) {
+      print("dir dos not exist");
+      await extractDir.create(recursive: true);
+    }
+    print("created dir?");
+    final archive = ZipDecoder().decodeBytes(zipBytes!);
+    print("decoded bytes");
+
+    // save zip contents to new folder
+    for (final file in archive) {
+      final filename = p.join(extractPath, "${songData.fileId}_${file.name}");
+
+      if (file.isFile) {
+        final data = file.content as List<int>;
+        print("creating file $filename");
+        File(filename)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(data);
+        songData.songPaths.add(filename);
+      } else {
+        Directory(filename).create(recursive: true);
+      }
+    }
+
+    final infoPath = p.join(directory.path, 'songs/data/');
+    final infoDir = Directory(infoPath);
+    if (!await infoDir.exists()) {
+      print("info dir dos not exist");
+      await infoDir.create(recursive: true);
+    }
+    songData.dataPath = "$infoPath${songData.fileId}.txt";
+    print("song data contents: ${songData.jsonFromClass()}");
+    await File(songData.dataPath).writeAsString(jsonEncode(songData.jsonFromClass()));
+
+    print("created info file $infoPath/${songData.fileId}.txt");
+
+    Navigator.pushNamed(context, "/");
   }
 
   @override
@@ -80,7 +146,7 @@ class _SplitSongState extends State<SplitSong> {
             (step == 0)
                 ? Column(
                     children: [
-                      Text("Upload a song file:", style: TextStyle(fontSize: 18),),
+                      Text("Upload a song file:", style: TextStyle(fontSize: 18)),
                       SizedBox(height: 16),
                       IconButton.filledTonal(onPressed: pickFile, icon: Icon(Icons.upload_file)),
                     ],
@@ -94,86 +160,28 @@ class _SplitSongState extends State<SplitSong> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [Icon(Icons.audio_file), SizedBox(width: 8), Text(pickedFile!.path.split('/').last)],
                       ),
-                      SizedBox(height: 32),
-                      // Text("Select settings:"),
-                      // SizedBox(height: 16),
-                      // Column(
-                      //   crossAxisAlignment: CrossAxisAlignment.start,
-                      //   children: [
-                      //     IntrinsicWidth(
-                      //       child: ListTile(
-                      //         title: const Text('Accompaniment'),
-                      //         leading: Radio<String>(
-                      //           value: 'accompaniment',
-                      //           groupValue: outputType,
-                      //           onChanged: (String? value) {
-                      //             setState(() {
-                      //               outputType = value!;
-                      //             });
-                      //           },
-                      //         ),
-                      //       ),
-                      //     ),
-                      //     IntrinsicWidth(
-                      //       child: ListTile(
-                      //         title: const Text('Bass Only'),
-                      //         leading: Radio<String>(
-                      //           value: 'bass',
-                      //           groupValue: outputType,
-                      //           onChanged: (String? value) {
-                      //             setState(() {
-                      //               outputType = value!;
-                      //             });
-                      //           },
-                      //         ),
-                      //       ),
-                      //     ),
-                      //     IntrinsicWidth(
-                      //       child: ListTile(
-                      //         title: const Text('Drums Only'),
-                      //         leading: Radio<String>(
-                      //           value: 'drums',
-                      //           groupValue: outputType,
-                      //           onChanged: (String? value) {
-                      //             setState(() {
-                      //               outputType = value!;
-                      //             });
-                      //           },
-                      //         ),
-                      //       ),
-                      //     ),
-                      //     IntrinsicWidth(
-                      //       child: ListTile(
-                      //         title: const Text('Vocals'),
-                      //         leading: Radio<String>(
-                      //           value: 'vocals',
-                      //           groupValue: outputType,
-                      //           onChanged: (String? value) {
-                      //             setState(() {
-                      //               outputType = value!;
-                      //             });
-                      //           },
-                      //         ),
-                      //       ),
-                      //     ),
-                      //     IntrinsicWidth(
-                      //       child: ListTile(
-                      //         title: const Text('Other (no drums, bass, or vocals)'),
-                      //         leading: Radio<String>(
-                      //           value: 'other',
-                      //           groupValue: outputType,
-                      //           onChanged: (String? value) {
-                      //             setState(() {
-                      //               outputType = value!;
-                      //             });
-                      //           },
-                      //         ),
-                      //       ),
-                      //     ),
-                      //   ],
-                      // ),
-                      // SizedBox(height: 16),
-                      FilledButton(onPressed: stripFile, child: Text("Strip Vocals from Audio")),
+                      SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: stripFile,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            loadingSplit
+                                ? Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2,),
+                                      ),
+                                      SizedBox(width: 16),
+                                    ],
+                                  )
+                                : SizedBox(),
+                            Text("Split Song"),
+                          ],
+                        ),
+                      ),
                     ],
                   )
                 : (step == 2)
@@ -185,26 +193,10 @@ class _SplitSongState extends State<SplitSong> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [Icon(Icons.audio_file), SizedBox(width: 8), Text(pickedFile!.path.split('/').last)],
                       ),
-                      SizedBox(height: 32),
-                      IconButton.filledTonal(
-                        onPressed: () {
-                          if (currentlyPlaying) {
-                            player.pause();
-                          } else {
-                            if (player.state == PlayerState.paused) {
-                              player.resume();
-                            } else {
-                              player.play(BytesSource(resultBytes!));
-                            }
-                          }
-                          setState(() {
-                            currentlyPlaying = !currentlyPlaying;
-                          });
-                        },
-                        icon: currentlyPlaying ? Icon(Icons.pause) : Icon(Icons.play_arrow),
-                      ),
-                      SizedBox(height: 32),
-                      TextButton.icon(onPressed: saveFile, icon: Icon(Icons.save), label: Text("Save File")),
+                      SizedBox(height: 16),
+                      Text("Song split successfully!"),
+                      SizedBox(height: 16),
+                      TextButton.icon(onPressed: saveFile, icon: Icon(Icons.save), label: Text("Save Song to App")),
                     ],
                   )
                 : Container(),
