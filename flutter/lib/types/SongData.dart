@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class DataFile {
   String fileId;
   String fileName;
@@ -25,14 +23,14 @@ class DataFile {
   }
 
   Map jsonFromClass() {
-    Map settingsJson = this.settings.jsonFromClass();
+    Map settingsJson = settings.jsonFromClass();
     return {
-      "fileId": this.fileId,
-      "fileName": this.fileName,
-      "dataPath": this.dataPath,
-      "songPaths": this.songPaths,
-      "splitType": this.splitType,
-      "uploadedDate": this.uploadedDate.toString(),
+      "fileId": fileId,
+      "fileName": fileName,
+      "dataPath": dataPath,
+      "songPaths": songPaths,
+      "splitType": splitType,
+      "uploadedDate": uploadedDate.toString(),
       "settings": settingsJson,
     };
   }
@@ -49,6 +47,6 @@ class SongSettings {
   }
 
   Map jsonFromClass() {
-    return {"pitch": this.pitch, "volume": this.volume};
+    return {"pitch": pitch, "volume": volume};
   }
 }

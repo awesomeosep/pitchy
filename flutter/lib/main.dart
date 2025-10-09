@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:spleeter_flutter_app/home.dart';
 import 'package:spleeter_flutter_app/listen.dart';
 import 'package:spleeter_flutter_app/split_song.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+Future main() async {
+  await dotenv.load();
+
   runApp(
     MaterialApp(
       title: 'Flutter Demo',

@@ -1,16 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-// import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
-// import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:spleeter_flutter_app/types/SongData.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SplitSong extends StatefulWidget {
   const SplitSong({super.key});
@@ -24,7 +23,6 @@ class _SplitSongState extends State<SplitSong> {
   int step = 0;
   String outputType = "accompaniment";
   List<int>? zipBytes;
-  // final player = AudioPlayer();
   bool currentlyPlaying = false;
   bool loadingSplit = false;
 
@@ -46,7 +44,8 @@ class _SplitSongState extends State<SplitSong> {
     setState(() {
       loadingSplit = true;
     });
-    var request = http.MultipartRequest('POST', Uri.parse("http://192.168.1.159:8000/songs/"));
+    final apiUrl = dotenv.env["SPLEETER_API_URL"] ?? "error";
+    var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
 
     request.files.add(await http.MultipartFile.fromPath('song_file', pickedFile!.path));
 
@@ -79,7 +78,6 @@ class _SplitSongState extends State<SplitSong> {
     final directory = await getApplicationDocumentsDirectory();
 
     final pathitems = pickedFile!.path.split('/').last.split(".");
-    final origFileExt = pathitems.last;
     pathitems.removeLast();
     final origFileName = pathitems.join(".");
 
@@ -162,7 +160,7 @@ class _SplitSongState extends State<SplitSong> {
                       ),
                       SizedBox(height: 16),
                       FilledButton(
-                        onPressed: stripFile,
+                        onPressed: loadingSplit ? null : stripFile,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -172,7 +170,7 @@ class _SplitSongState extends State<SplitSong> {
                                       SizedBox(
                                         width: 12,
                                         height: 12,
-                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2,),
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                       ),
                                       SizedBox(width: 16),
                                     ],
@@ -181,6 +179,17 @@ class _SplitSongState extends State<SplitSong> {
                             Text("Split Song"),
                           ],
                         ),
+                      ),
+                      SizedBox(height: 16),
+                      TextButton.icon(
+                        icon: Icon(Icons.arrow_back),
+                        label: Text("Pick different file"),
+                        onPressed: loadingSplit ? null : () {
+                          setState(() {
+                            pickedFile = null;
+                            step = 0;
+                          });
+                        },
                       ),
                     ],
                   )

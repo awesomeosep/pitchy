@@ -48,8 +48,9 @@ class _ListenState extends State<Listen> {
         final messenger = ScaffoldMessenger.of(context);
         try {
           final directory = await getApplicationDocumentsDirectory();
-          final dataFile = File("${directory.path}/songs/data/${fileId}.txt");
+          final dataFile = File("${directory.path}/songs/data/$fileId.txt");
           if (fileId != null && dataFile != null) {
+            print("fileid, datafile not null");
             setState(() {
               trackFiles = [];
             });
@@ -69,6 +70,8 @@ class _ListenState extends State<Listen> {
             }
 
             await player.setAudioSource(AudioSource.uri(Uri.file(trackFiles[trackIndex].path)));
+            await player.setVolume(origSongData!.settings.volume);
+            await player.setPitch(origSongData!.settings.pitch);
             await player.setLoopMode(LoopMode.all);
             setState(() {
               _semitones = (12 * (log(player.pitch) / log(2))).round();
@@ -77,7 +80,7 @@ class _ListenState extends State<Listen> {
             });
           }
         } catch (e) {
-          messenger.showSnackBar(SnackBar(content: Text('Could not load file ID ${fileId}')));
+          messenger.showSnackBar(SnackBar(content: Text('Could not load file ID $fileId')));
         }
       }
     });
@@ -101,6 +104,14 @@ class _ListenState extends State<Listen> {
       _volume = player.volume;
       _lastVolume = _volume;
     });
+  }
+
+  void saveSettings() async {
+    DataFile newSongData = origSongData!;
+    newSongData.settings.pitch = player.pitch;
+    newSongData.settings.volume = player.volume;
+    await File(newSongData.dataPath).writeAsString(jsonEncode(newSongData.jsonFromClass()));
+    print("file saved");
   }
 
   final TextEditingController trackController = TextEditingController();
@@ -325,6 +336,7 @@ class _ListenState extends State<Listen> {
                           ),
                         ],
                       ),
+                      TextButton.icon(onPressed: saveSettings, label: Text("Save Settings"), icon: Icon(Icons.save))
                     ],
                   ),
                 ),
