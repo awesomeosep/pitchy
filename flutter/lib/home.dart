@@ -187,12 +187,19 @@ class _HomeListState extends State<HomeList> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(
-            child: Icon(Icons.upload),
-            onPressed: () async {
-              Navigator.pushNamed(context, '/split');
-            },
-          ),
+          viewMode == "uploads"
+              ? FloatingActionButton(
+                  child: Icon(Icons.upload),
+                  onPressed: () async {
+                    Navigator.pushNamed(context, '/split');
+                  },
+                )
+              : FloatingActionButton(
+                  child: Icon(Icons.add),
+                  onPressed: () async {
+                    Navigator.pushNamed(context, '/newPlaylist');
+                  },
+                ),
         ],
       ),
       appBar: AppBar(
@@ -276,16 +283,16 @@ class _HomeListState extends State<HomeList> {
                       spacing: 8,
                       direction: Axis.horizontal,
                       children: [
-                        FilledButton.tonalIcon(
-                          style: ButtonStyle(
-                            padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
-                          ),
-                          label: Text("New Playlist"),
-                          onPressed: () async {
-                            Navigator.pushNamed(context, "/newPlaylist");
-                          },
-                          icon: Icon(Icons.add),
-                        ),
+                        // FilledButton.tonalIcon(
+                        //   style: ButtonStyle(
+                        //     padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                        //   ),
+                        //   label: Text("New Playlist"),
+                        //   onPressed: () async {
+                        //     Navigator.pushNamed(context, "/newPlaylist");
+                        //   },
+                        //   icon: Icon(Icons.add),
+                        // ),
                         FilledButton.tonalIcon(
                           style: ButtonStyle(
                             padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
