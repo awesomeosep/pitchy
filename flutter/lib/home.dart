@@ -19,7 +19,7 @@ class _HomeListState extends State<HomeList> {
   List<FileSystemEntity> splitSongFiles = [];
   List<DataFile> splitSongData = [];
   String viewMode = "uploads";
-  AppSettings? settings = null;
+  AppSettings? settings;
 
   Future<void> deleteSong(String fileId) async {
     final dataFile = File(splitSongData.where((i) => i.fileId == fileId).toList()[0].dataPath);
@@ -46,6 +46,7 @@ class _HomeListState extends State<HomeList> {
     newSettings.playlists = newSettings.playlists.where((item) => item.playlistId != playlistId).toList();
     final newSettingsJson = newSettings.jsonFromClass();
     await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+    getFiles();
   }
 
   Future<void> deleteAll() async {
@@ -86,6 +87,7 @@ class _HomeListState extends State<HomeList> {
     final newSettingsJson = newSettings.jsonFromClass();
     print(newSettingsJson);
     await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+    getFiles();
   }
 
   Future<void> getFiles() async {
@@ -94,7 +96,7 @@ class _HomeListState extends State<HomeList> {
       splitSongFiles = [];
     });
 
-    // get song dat
+    // get song data
     final directory = await getApplicationDocumentsDirectory();
     final dataDirectoryPath = "${directory.path}/songs/data";
     final dataDirectory = Directory(dataDirectoryPath);
@@ -239,6 +241,7 @@ class _HomeListState extends State<HomeList> {
                     (gotFiles)
                         ? (splitSongData.isNotEmpty
                               ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: splitSongData.map((file) {
                                     return ListTile(
                                       leading: Icon(Icons.music_note),
@@ -249,7 +252,13 @@ class _HomeListState extends State<HomeList> {
                                           deleteSong(file.fileId);
                                         },
                                       ),
-                                      onTap: () => {Navigator.pushNamed(context, '/listen', arguments: file.fileId)},
+                                      onTap: () => {
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/listen',
+                                          arguments: ListenArguments("song", "", file.fileId),
+                                        ),
+                                      },
                                     );
                                   }).toList(),
                                 )
@@ -303,6 +312,7 @@ class _HomeListState extends State<HomeList> {
                     (gotFiles)
                         ? (settings!.playlists.isNotEmpty
                               ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: settings!.playlists.map((playlist) {
                                     return ListTile(
                                       leading: Icon(Icons.playlist_play),
@@ -314,11 +324,7 @@ class _HomeListState extends State<HomeList> {
                                         },
                                       ),
                                       onTap: () => {
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/listen',
-                                          arguments: ListenArguments("playlist", playlist.playlistId),
-                                        ),
+                                        Navigator.pushNamed(context, '/openPlaylist', arguments: playlist.playlistId),
                                       },
                                     );
                                   }).toList(),

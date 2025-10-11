@@ -8,12 +8,7 @@ class PlaylistData {
 
   static PlaylistData classFromTxt(dynamic json) {
     print(json);
-    print(PlaylistData(
-      json["playlistId"],
-      json["playlistName"],
-      json["playlistDescription"],
-      json["songIds"].length > 0 ? List.from(json["songIds"].map((item) => item.toString())) : [],
-    ));
+    print(json["songIds"].map((item) => item.toString()));
     return PlaylistData(
       json["playlistId"],
       json["playlistName"],
