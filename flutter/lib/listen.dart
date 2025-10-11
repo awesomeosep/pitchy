@@ -288,7 +288,13 @@ class _ListenState extends State<Listen> {
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
     return Scaffold(
-      appBar: AppBar(title: Text(playlistData != null || songsData.isNotEmpty ? (group == "playlist" ? "Playlist: ${playlistData!.playlistName}" : "Song: ${songsData[0].fileName}") : "Listen")),
+      appBar: AppBar(
+        title: Text(
+          playlistData != null || songsData.isNotEmpty
+              ? (group == "playlist" ? "Playlist: ${playlistData!.playlistName}" : "Song: ${songsData[0].fileName}")
+              : "Listen",
+        ),
+      ),
       bottomNavigationBar: SafeArea(
         minimum: EdgeInsets.only(top: 0),
         child: SizedBox(
@@ -384,6 +390,8 @@ class _ListenState extends State<Listen> {
             child: Column(
               mainAxisSize: MainAxisSize.max,
               children: [
+                Text("Song ${songsData.indexWhere((item) => item.fileId == currentFileId) + 1} of ${songsData.length}"),
+                SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -394,7 +402,7 @@ class _ListenState extends State<Listen> {
                         : Text('File not found'),
                   ],
                 ),
-                SizedBox(height: 12),
+                SizedBox(height: 8),
                 StreamBuilder<Duration?>(
                   stream: currentPlayer == "accompaniment" ? mainPlayer.durationStream : alternatePlayer.durationStream,
                   builder: (context, snapDur) {

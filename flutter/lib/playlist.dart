@@ -182,18 +182,22 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                 spacing: 8,
                 direction: Axis.horizontal,
                 children: [
-                  FilledButton.tonalIcon(
-                    style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0))),
-                    label: Text("Play All"),
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/listen',
-                        arguments: ListenArguments("playlist", playlistId!, thisPlaylistData!.songIds[0]),
-                      );
-                    },
-                    icon: Icon(Icons.playlist_play),
-                  ),
+                  (thisPlaylistData?.songIds.isNotEmpty ?? false)
+                      ? FilledButton.tonalIcon(
+                          style: ButtonStyle(
+                            padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                          ),
+                          label: Text("Play All"),
+                          onPressed: () {
+                            Navigator.pushNamed(
+                              context,
+                              '/listen',
+                              arguments: ListenArguments("playlist", playlistId!, thisPlaylistData!.songIds[0]),
+                            );
+                          },
+                          icon: Icon(Icons.playlist_play),
+                        )
+                      : Container(),
                   FilledButton.tonalIcon(
                     style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0))),
                     label: Text("Add Song"),

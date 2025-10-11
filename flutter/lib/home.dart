@@ -208,7 +208,7 @@ class _HomeListState extends State<HomeList> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Uploaded Songs", style: TextStyle(fontSize: 18.0)),
+                    Text("All Uploads", style: TextStyle(fontSize: 18.0)),
                     SizedBox(height: 16),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
