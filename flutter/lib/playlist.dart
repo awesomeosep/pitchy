@@ -22,7 +22,6 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
   PlaylistData? thisPlaylistData;
   TextEditingController playlistNameController = TextEditingController();
   TextEditingController playlistDescriptionController = TextEditingController();
-  // List<DataFile> songsData = [];
   bool gotFiles = false;
   List<DataFile> allUserSongsData = [];
 
@@ -68,18 +67,9 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                 allUserSongsData.add(fileData);
               });
             }
-            // for (int i = 0; i < thisPlaylistData!.songIds.length; i++) {
-            //   final songPath = "${directory.path}/songs/data/${thisPlaylistData!.songIds[i]}";
-            //   final songFile = File(songPath);
-            //   String songString = await songFile.readAsString();
-            //   dynamic songJson = jsonDecode(songString);
-            //   DataFile songData = DataFile.classFromTxt(songJson);
-
-            //   setState(() {
-            //     songsData.add(songData);
-            //   });
-            // }
           }
+          playlistNameController.text = thisPlaylistData?.playlistName ?? "";
+          playlistDescriptionController.text = thisPlaylistData?.playlistDescription ?? "";
           setState(() {
             gotFiles = true;
           });
@@ -106,6 +96,8 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
 
     final newSettingsJson = oldSettings.jsonFromClass();
     await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+    thisPlaylistData!.playlistName = playlistNameController.text;
+    thisPlaylistData!.playlistDescription = playlistNameController.text;
   }
 
   void deleteSongFromPlaylist(String songId) async {}
@@ -131,7 +123,7 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: allUserSongsData.map((song) {
                           return ListTile(
-                            leading: Icon(Icons.playlist_play),
+                            trailing: Icon(Icons.add),
                             title: Text(song.fileName),
                             onTap: () async {
                               final directory = await getApplicationDocumentsDirectory();
@@ -175,64 +167,118 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Songs", style: TextStyle(fontSize: 18.0)),
-              SizedBox(height: 16),
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                direction: Axis.horizontal,
-                children: [
-                  (thisPlaylistData?.songIds.isNotEmpty ?? false)
-                      ? FilledButton.tonalIcon(
-                          style: ButtonStyle(
-                            padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
-                          ),
-                          label: Text("Play All"),
-                          onPressed: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/listen',
-                              arguments: ListenArguments("playlist", playlistId!, thisPlaylistData!.songIds[0]),
-                            );
-                          },
-                          icon: Icon(Icons.playlist_play),
-                        )
-                      : Container(),
-                  FilledButton.tonalIcon(
-                    style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0))),
-                    label: Text("Add Song"),
-                    onPressed: addSongToPlaylist,
-                    icon: Icon(Icons.add),
+              Card(
+                child: Padding(
+                  padding: EdgeInsetsGeometry.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Playlist", style: TextStyle(fontSize: 18.0)),
+                      SizedBox(height: 16),
+                      TextField(
+                        controller: playlistNameController,
+                        decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Name'),
+                      ),
+                      SizedBox(height: 16),
+                      TextField(
+                        controller: playlistDescriptionController,
+                        decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Description'),
+                      ),
+                      SizedBox(height: 16),
+                      FilledButton.tonalIcon(
+                        style: ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0))),
+                        label: Text("Save"),
+                        onPressed: savePlaylistInfo,
+                        icon: Icon(Icons.save),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
               SizedBox(height: 16),
-              (gotFiles)
-                  ? (allUserSongsData.isNotEmpty && (thisPlaylistData?.songIds.isNotEmpty ?? false)
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: thisPlaylistData!.songIds.map((songId) {
-                              return ListTile(
-                                leading: Icon(Icons.play_arrow),
-                                title: Text(allUserSongsData.firstWhere((item) => item.fileId == songId).fileName),
-                                trailing: IconButton(
-                                  icon: Icon(Icons.delete),
-                                  onPressed: () {
-                                    deleteSongFromPlaylist(songId);
-                                  },
-                                ),
-                                onTap: () => {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/listen',
-                                    arguments: ListenArguments("playlist", playlistId!, songId),
+              Card(
+                child: Padding(
+                  padding: EdgeInsetsGeometry.fromLTRB(0, 16, 0, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsetsGeometry.fromLTRB(16, 0, 16, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Songs", style: TextStyle(fontSize: 18.0)),
+                            SizedBox(height: 16),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              direction: Axis.horizontal,
+                              children: [
+                                (thisPlaylistData?.songIds.isNotEmpty ?? false)
+                                    ? FilledButton.tonalIcon(
+                                        style: ButtonStyle(
+                                          padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                                        ),
+                                        label: Text("Play All"),
+                                        onPressed: () {
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/listen',
+                                            arguments: ListenArguments(
+                                              "playlist",
+                                              playlistId!,
+                                              thisPlaylistData!.songIds[0],
+                                            ),
+                                          );
+                                        },
+                                        icon: Icon(Icons.playlist_play),
+                                      )
+                                    : Container(),
+                                FilledButton.tonalIcon(
+                                  style: ButtonStyle(
+                                    padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
                                   ),
-                                },
-                              );
-                            }).toList(),
-                          )
-                        : Column(children: [Text("No songs found")]))
-                  : Text("Refresh to load songs"),
+                                  label: Text("Add Song"),
+                                  onPressed: addSongToPlaylist,
+                                  icon: Icon(Icons.add),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      (gotFiles)
+                          ? (allUserSongsData.isNotEmpty && (thisPlaylistData?.songIds.isNotEmpty ?? false)
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: thisPlaylistData!.songIds.map((songId) {
+                                      return ListTile(
+                                        title: Text(
+                                          allUserSongsData.firstWhere((item) => item.fileId == songId).fileName,
+                                        ),
+                                        trailing: IconButton(
+                                          icon: Icon(Icons.delete),
+                                          onPressed: () {
+                                            deleteSongFromPlaylist(songId);
+                                          },
+                                        ),
+                                        onTap: () => {
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/listen',
+                                            arguments: ListenArguments("playlist", playlistId!, songId),
+                                          ),
+                                        },
+                                      );
+                                    }).toList(),
+                                  )
+                                : Column(children: [Text("No songs found")]))
+                          : Text("Refresh to load songs"),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
