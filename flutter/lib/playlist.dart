@@ -24,12 +24,16 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
   TextEditingController playlistDescriptionController = TextEditingController();
   bool gotFiles = false;
   List<DataFile> allUserSongsData = [];
+  bool loadingData = false;
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      setState(() {
+        loadingData = true;
+      });
       final arg = ModalRoute.of(context)?.settings.arguments;
       if (arg is String) {
         setState(() {
@@ -41,7 +45,7 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
           // get settings
           final directory = await getApplicationDocumentsDirectory();
           final settingsFile = File("${directory.path}/app/settings.txt");
-          if (playlistId != null && settingsFile != null) {
+          if (playlistId != null) {
             setState(() {
               allUserSongsData = [];
             });
@@ -77,10 +81,39 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
           messenger.showSnackBar(SnackBar(content: Text('Could not load playlist ID $playlistId')));
         }
       }
+      setState(() {
+        loadingData = false;
+      });
     });
   }
 
   void savePlaylistInfo() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final appSettingsPath = "${directory.path}/app/settings.txt";
+      String oldSettingsString = await File(appSettingsPath).readAsString();
+      dynamic oldJson = jsonDecode(oldSettingsString);
+      AppSettings oldSettings = AppSettings.classFromTxt(oldJson);
+
+      PlaylistData newPlaylist = thisPlaylistData!;
+      newPlaylist.playlistName = playlistNameController.text;
+      newPlaylist.playlistDescription = playlistDescriptionController.text;
+
+      oldSettings.playlists.removeWhere((item) => item.playlistId == playlistId);
+      oldSettings.playlists.add(newPlaylist);
+
+      final newSettingsJson = oldSettings.jsonFromClass();
+      await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+      thisPlaylistData!.playlistName = playlistNameController.text;
+      thisPlaylistData!.playlistDescription = playlistNameController.text;
+      messenger.showSnackBar(SnackBar(content: Text("Playlist details saved!")));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text("Error saving playlist details.")));
+    }
+  }
+
+  void deleteSongFromPlaylist(int idx, String songId) async {
     final directory = await getApplicationDocumentsDirectory();
     final appSettingsPath = "${directory.path}/app/settings.txt";
     String oldSettingsString = await File(appSettingsPath).readAsString();
@@ -88,19 +121,18 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
     AppSettings oldSettings = AppSettings.classFromTxt(oldJson);
 
     PlaylistData newPlaylist = thisPlaylistData!;
-    newPlaylist.playlistName = playlistNameController.text;
-    newPlaylist.playlistDescription = playlistDescriptionController.text;
+    newPlaylist.songIds.removeAt(idx);
 
     oldSettings.playlists.removeWhere((item) => item.playlistId == playlistId);
     oldSettings.playlists.add(newPlaylist);
 
     final newSettingsJson = oldSettings.jsonFromClass();
     await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
-    thisPlaylistData!.playlistName = playlistNameController.text;
-    thisPlaylistData!.playlistDescription = playlistNameController.text;
-  }
 
-  void deleteSongFromPlaylist(String songId) async {}
+    setState(() {
+      thisPlaylistData = newPlaylist;
+    });
+  }
 
   void addSongToPlaylist() async {
     showModalBottomSheet(
@@ -112,43 +144,45 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
           width: double.maxFinite,
           child: Padding(
             padding: EdgeInsetsGeometry.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: <Widget>[
-                Text('Pick a song:'),
-                SizedBox(height: 16),
-                (allUserSongsData.isEmpty)
-                    ? Text("You have not uplaoded any songs yet.")
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: allUserSongsData.map((song) {
-                          return ListTile(
-                            trailing: Icon(Icons.add),
-                            title: Text(song.fileName),
-                            onTap: () async {
-                              final directory = await getApplicationDocumentsDirectory();
-                              final appSettingsPath = "${directory.path}/app/settings.txt";
-                              String oldSettingsString = await File(appSettingsPath).readAsString();
-                              dynamic oldJson = jsonDecode(oldSettingsString);
-                              AppSettings oldSettings = AppSettings.classFromTxt(oldJson);
+            child: loadingData
+                ? CircularProgressIndicator()
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: <Widget>[
+                      Text('Pick a song:'),
+                      SizedBox(height: 16),
+                      (allUserSongsData.isEmpty)
+                          ? Text("You have not uplaoded any songs yet.")
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: allUserSongsData.map((song) {
+                                return ListTile(
+                                  trailing: Icon(Icons.add),
+                                  title: Text(song.fileName),
+                                  onTap: () async {
+                                    final directory = await getApplicationDocumentsDirectory();
+                                    final appSettingsPath = "${directory.path}/app/settings.txt";
+                                    String oldSettingsString = await File(appSettingsPath).readAsString();
+                                    dynamic oldJson = jsonDecode(oldSettingsString);
+                                    AppSettings oldSettings = AppSettings.classFromTxt(oldJson);
 
-                              PlaylistData newPlaylist = thisPlaylistData!;
-                              newPlaylist.songIds.add(song.fileId);
+                                    PlaylistData newPlaylist = thisPlaylistData!;
+                                    newPlaylist.songIds.add(song.fileId);
 
-                              oldSettings.playlists.removeWhere((item) => item.playlistId == playlistId);
-                              oldSettings.playlists.add(newPlaylist);
+                                    oldSettings.playlists.removeWhere((item) => item.playlistId == playlistId);
+                                    oldSettings.playlists.add(newPlaylist);
 
-                              final newSettingsJson = oldSettings.jsonFromClass();
-                              await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
-                              Navigator.pop(context);
-                            },
-                          );
-                        }).toList(),
-                      ),
-                SizedBox(height: 16),
-                FilledButton.tonal(onPressed: () => {Navigator.pop(context)}, child: Text('Close')),
-              ],
-            ),
+                                    final newSettingsJson = oldSettings.jsonFromClass();
+                                    await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+                                    Navigator.pop(context);
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                      SizedBox(height: 16),
+                      FilledButton.tonal(onPressed: () => {Navigator.pop(context)}, child: Text('Close')),
+                    ],
+                  ),
           ),
         );
       },
@@ -160,7 +194,10 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
     playlistId = ModalRoute.of(context)!.settings.arguments as String;
 
     return Scaffold(
-      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: Text(thisPlaylistData?.playlistName ?? 'Playlist')),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(thisPlaylistData?.playlistName ?? 'Playlist'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
@@ -177,12 +214,18 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                       SizedBox(height: 16),
                       TextField(
                         controller: playlistNameController,
-                        decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Name'),
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(50)),
+                        ),
                       ),
                       SizedBox(height: 16),
                       TextField(
                         controller: playlistDescriptionController,
-                        decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Description'),
+                        decoration: InputDecoration(
+                          labelText: 'Description',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(50)),
+                        ),
                       ),
                       SizedBox(height: 16),
                       FilledButton.tonalIcon(
@@ -252,31 +295,38 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                           ? (allUserSongsData.isNotEmpty && (thisPlaylistData?.songIds.isNotEmpty ?? false)
                                 ? Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: thisPlaylistData!.songIds.map((songId) {
-                                      return ListTile(
-                                        title: Text(
-                                          allUserSongsData.firstWhere((item) => item.fileId == songId).fileName,
-                                        ),
-                                        trailing: IconButton(
-                                          icon: Icon(Icons.delete),
-                                          onPressed: () {
-                                            deleteSongFromPlaylist(songId);
-                                          },
-                                        ),
-                                        onTap: () => {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/listen',
-                                            arguments: ListenArguments("playlist", playlistId!, songId),
-                                          ),
-                                        },
-                                      );
-                                    }).toList(),
+                                    children: thisPlaylistData!.songIds
+                                        .asMap()
+                                        .map((idx, songId) {
+                                          return MapEntry(
+                                            idx,
+                                            ListTile(
+                                              title: Text(
+                                                allUserSongsData.firstWhere((item) => item.fileId == songId).fileName,
+                                              ),
+                                              trailing: IconButton(
+                                                icon: Icon(Icons.delete),
+                                                onPressed: () {
+                                                  deleteSongFromPlaylist(idx, songId);
+                                                },
+                                              ),
+                                              onTap: () => {
+                                                Navigator.pushNamed(
+                                                  context,
+                                                  '/listen',
+                                                  arguments: ListenArguments("playlist", playlistId!, songId),
+                                                ),
+                                              },
+                                            ),
+                                          );
+                                        })
+                                        .values
+                                        .toList(),
                                   )
                                 : Padding(
-                                  padding: const EdgeInsets.fromLTRB(16.0, 0, 16, 16),
-                                  child: Column(children: [Text("No songs found")]),
-                                ))
+                                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16, 16),
+                                    child: Column(children: [Text("No songs found")]),
+                                  ))
                           : Text("Refresh to load songs"),
                     ],
                   ),
