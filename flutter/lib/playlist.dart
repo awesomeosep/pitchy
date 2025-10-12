@@ -128,7 +128,7 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
 
     final newSettingsJson = oldSettings.jsonFromClass();
     await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
-    
+
     setState(() {
       thisPlaylistData = newPlaylist;
     });
@@ -214,12 +214,18 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                       SizedBox(height: 16),
                       TextField(
                         controller: playlistNameController,
-                        decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Name'),
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(50)),
+                        ),
                       ),
                       SizedBox(height: 16),
                       TextField(
                         controller: playlistDescriptionController,
-                        decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Description'),
+                        decoration: InputDecoration(
+                          labelText: 'Description',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(50)),
+                        ),
                       ),
                       SizedBox(height: 16),
                       FilledButton.tonalIcon(

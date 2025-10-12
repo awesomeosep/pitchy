@@ -21,12 +21,22 @@ class _HomeListState extends State<HomeList> {
   String viewMode = "uploads";
   AppSettings? settings;
   bool loadingData = false;
+  late String? pageArguments;
 
   @override
   void initState() {
     super.initState();
 
     getFiles(false);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final arg = ModalRoute.of(context)?.settings.arguments;
+      if (arg is String) {
+        setState(() {
+          viewMode = (arg == "uploads" || arg == "playlists") ? arg : "uploads";
+        });
+      }
+    });
   }
 
   Future<void> deleteSong(String fileId) async {
@@ -159,6 +169,8 @@ class _HomeListState extends State<HomeList> {
 
   @override
   Widget build(BuildContext context) {
+    pageArguments = ModalRoute.of(context)!.settings.arguments as String?;
+
     return Scaffold(
       drawer: Drawer(
         child: ListView(

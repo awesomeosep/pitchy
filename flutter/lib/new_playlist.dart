@@ -59,18 +59,24 @@ class _NewPlaylistState extends State<NewPlaylist> {
               SizedBox(height: 16),
               TextField(
                 controller: playlistNameController,
-                decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Playlist name'),
+                decoration: InputDecoration(
+                  labelText: 'Name',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(50)),
+                ),
               ),
               SizedBox(height: 16),
               TextField(
                 controller: playlistDescriptionController,
-                decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Playlist description'),
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(50)),
+                ),
               ),
               SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () {
                   createPlaylist();
-                  Navigator.pushNamed(context, "/");
+                  Navigator.pushNamed(context, "/", arguments: "playlists");
                 },
                 label: Text("Create Playlist"),
                 icon: Icon(Icons.playlist_add),

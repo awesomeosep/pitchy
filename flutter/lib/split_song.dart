@@ -136,7 +136,7 @@ class _SplitSongState extends State<SplitSong> {
 
       print("created info file $infoPath/${songData.fileId}.txt");
       messenger.showSnackBar(SnackBar(content: Text("Song saved to app!")));
-      Navigator.pushNamed(context, "/");
+      Navigator.pushNamed(context, "/", arguments: "uploads");
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text("Error saving song to app")));
       print("Error saving song: ${e.toString()}");
