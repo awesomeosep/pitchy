@@ -88,6 +88,32 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
   }
 
   void savePlaylistInfo() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final appSettingsPath = "${directory.path}/app/settings.txt";
+      String oldSettingsString = await File(appSettingsPath).readAsString();
+      dynamic oldJson = jsonDecode(oldSettingsString);
+      AppSettings oldSettings = AppSettings.classFromTxt(oldJson);
+
+      PlaylistData newPlaylist = thisPlaylistData!;
+      newPlaylist.playlistName = playlistNameController.text;
+      newPlaylist.playlistDescription = playlistDescriptionController.text;
+
+      oldSettings.playlists.removeWhere((item) => item.playlistId == playlistId);
+      oldSettings.playlists.add(newPlaylist);
+
+      final newSettingsJson = oldSettings.jsonFromClass();
+      await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+      thisPlaylistData!.playlistName = playlistNameController.text;
+      thisPlaylistData!.playlistDescription = playlistNameController.text;
+      messenger.showSnackBar(SnackBar(content: Text("Playlist details saved!")));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text("Error saving playlist details.")));
+    }
+  }
+
+  void deleteSongFromPlaylist(int idx, String songId) async {
     final directory = await getApplicationDocumentsDirectory();
     final appSettingsPath = "${directory.path}/app/settings.txt";
     String oldSettingsString = await File(appSettingsPath).readAsString();
@@ -95,19 +121,18 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
     AppSettings oldSettings = AppSettings.classFromTxt(oldJson);
 
     PlaylistData newPlaylist = thisPlaylistData!;
-    newPlaylist.playlistName = playlistNameController.text;
-    newPlaylist.playlistDescription = playlistDescriptionController.text;
+    newPlaylist.songIds.removeAt(idx);
 
     oldSettings.playlists.removeWhere((item) => item.playlistId == playlistId);
     oldSettings.playlists.add(newPlaylist);
 
     final newSettingsJson = oldSettings.jsonFromClass();
     await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
-    thisPlaylistData!.playlistName = playlistNameController.text;
-    thisPlaylistData!.playlistDescription = playlistNameController.text;
+    
+    setState(() {
+      thisPlaylistData = newPlaylist;
+    });
   }
-
-  void deleteSongFromPlaylist(String songId) async {}
 
   void addSongToPlaylist() async {
     showModalBottomSheet(
@@ -264,26 +289,33 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                           ? (allUserSongsData.isNotEmpty && (thisPlaylistData?.songIds.isNotEmpty ?? false)
                                 ? Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: thisPlaylistData!.songIds.map((songId) {
-                                      return ListTile(
-                                        title: Text(
-                                          allUserSongsData.firstWhere((item) => item.fileId == songId).fileName,
-                                        ),
-                                        trailing: IconButton(
-                                          icon: Icon(Icons.delete),
-                                          onPressed: () {
-                                            deleteSongFromPlaylist(songId);
-                                          },
-                                        ),
-                                        onTap: () => {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/listen',
-                                            arguments: ListenArguments("playlist", playlistId!, songId),
-                                          ),
-                                        },
-                                      );
-                                    }).toList(),
+                                    children: thisPlaylistData!.songIds
+                                        .asMap()
+                                        .map((idx, songId) {
+                                          return MapEntry(
+                                            idx,
+                                            ListTile(
+                                              title: Text(
+                                                allUserSongsData.firstWhere((item) => item.fileId == songId).fileName,
+                                              ),
+                                              trailing: IconButton(
+                                                icon: Icon(Icons.delete),
+                                                onPressed: () {
+                                                  deleteSongFromPlaylist(idx, songId);
+                                                },
+                                              ),
+                                              onTap: () => {
+                                                Navigator.pushNamed(
+                                                  context,
+                                                  '/listen',
+                                                  arguments: ListenArguments("playlist", playlistId!, songId),
+                                                ),
+                                              },
+                                            ),
+                                          );
+                                        })
+                                        .values
+                                        .toList(),
                                   )
                                 : Padding(
                                     padding: const EdgeInsets.fromLTRB(16.0, 0, 16, 16),

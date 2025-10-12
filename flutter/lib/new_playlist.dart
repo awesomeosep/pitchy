@@ -19,23 +19,30 @@ class _NewPlaylistState extends State<NewPlaylist> {
   final playlistDescriptionController = TextEditingController();
 
   Future<void> createPlaylist() async {
-    final Random random = Random();
-    final directory = await getApplicationDocumentsDirectory();
-    final appSettingsPath = "${directory.path}/app/settings.txt";
-    String oldSettingsString = await File(appSettingsPath).readAsString();
-    dynamic oldJson = jsonDecode(oldSettingsString);
-    AppSettings oldSettings = AppSettings.classFromTxt(oldJson);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final Random random = Random();
+      final directory = await getApplicationDocumentsDirectory();
+      final appSettingsPath = "${directory.path}/app/settings.txt";
+      String oldSettingsString = await File(appSettingsPath).readAsString();
+      dynamic oldJson = jsonDecode(oldSettingsString);
+      AppSettings oldSettings = AppSettings.classFromTxt(oldJson);
 
-    PlaylistData newPlaylist = PlaylistData(
-      random.nextInt(10000).toString(),
-      playlistNameController.text,
-      playlistDescriptionController.text,
-      [],
-    );
+      PlaylistData newPlaylist = PlaylistData(
+        random.nextInt(10000).toString(),
+        playlistNameController.text,
+        playlistDescriptionController.text,
+        [],
+      );
 
-    oldSettings.playlists.add(newPlaylist);
-    final newSettingsJson = oldSettings.jsonFromClass();
-    await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+      oldSettings.playlists.add(newPlaylist);
+      final newSettingsJson = oldSettings.jsonFromClass();
+      await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+      messenger.showSnackBar(SnackBar(content: Text("Playlist created!")));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text("Error creating playlist")));
+      print("Error creating playlist ${e.toString()}");
+    }
   }
 
   @override

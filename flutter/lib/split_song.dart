@@ -77,64 +77,70 @@ class _SplitSongState extends State<SplitSong> {
   }
 
   Future<void> saveFile() async {
-    final Random random = Random();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final Random random = Random();
 
-    final directory = await getApplicationDocumentsDirectory();
+      final directory = await getApplicationDocumentsDirectory();
 
-    final pathitems = pickedFile!.path.split('/').last.split(".");
-    pathitems.removeLast();
-    final origFileName = pathitems.join(".");
+      final pathitems = pickedFile!.path.split('/').last.split(".");
+      pathitems.removeLast();
+      final origFileName = pathitems.join(".");
 
-    DataFile songData = DataFile(
-      random.nextInt(10000).toString(),
-      origFileName,
-      "",
-      [],
-      "2stems",
-      DateTime.now(),
-      SongSettings(1.0, 1.0),
-    );
+      DataFile songData = DataFile(
+        random.nextInt(10000).toString(),
+        origFileName,
+        "",
+        [],
+        "2stems",
+        DateTime.now(),
+        SongSettings(1.0, 1.0),
+      );
 
-    // extract zip
-    final extractPath = p.join(directory.path, 'songs/audio_files');
-    final extractDir = Directory(extractPath);
-    if (!await extractDir.exists()) {
-      print("dir dos not exist");
-      await extractDir.create(recursive: true);
-    }
-    print("created dir?");
-    final archive = ZipDecoder().decodeBytes(zipBytes!);
-    print("decoded bytes");
-
-    // save zip contents to new folder
-    for (final file in archive) {
-      final filename = p.join(extractPath, "${songData.fileId}_${file.name}");
-
-      if (file.isFile) {
-        final data = file.content as List<int>;
-        print("creating file $filename");
-        File(filename)
-          ..createSync(recursive: true)
-          ..writeAsBytesSync(data);
-        songData.songPaths.add(filename);
-      } else {
-        Directory(filename).create(recursive: true);
+      // extract zip
+      final extractPath = p.join(directory.path, 'songs/audio_files');
+      final extractDir = Directory(extractPath);
+      if (!await extractDir.exists()) {
+        print("dir dos not exist");
+        await extractDir.create(recursive: true);
       }
+      print("created dir?");
+      final archive = ZipDecoder().decodeBytes(zipBytes!);
+      print("decoded bytes");
+
+      // save zip contents to new folder
+      for (final file in archive) {
+        final filename = p.join(extractPath, "${songData.fileId}_${file.name}");
+
+        if (file.isFile) {
+          final data = file.content as List<int>;
+          print("creating file $filename");
+          File(filename)
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(data);
+          songData.songPaths.add(filename);
+        } else {
+          Directory(filename).create(recursive: true);
+        }
+      }
+
+      final infoPath = p.join(directory.path, 'songs/data/');
+      final infoDir = Directory(infoPath);
+      if (!await infoDir.exists()) {
+        print("info dir dos not exist");
+        await infoDir.create(recursive: true);
+      }
+      songData.dataPath = "$infoPath${songData.fileId}.txt";
+      print("song data contents: ${songData.jsonFromClass()}");
+      await File(songData.dataPath).writeAsString(jsonEncode(songData.jsonFromClass()));
+
+      print("created info file $infoPath/${songData.fileId}.txt");
+      messenger.showSnackBar(SnackBar(content: Text("Song saved to app!")));
+      Navigator.pushNamed(context, "/");
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text("Error saving song to app")));
+      print("Error saving song: ${e.toString()}");
     }
-
-    final infoPath = p.join(directory.path, 'songs/data/');
-    final infoDir = Directory(infoPath);
-    if (!await infoDir.exists()) {
-      print("info dir dos not exist");
-      await infoDir.create(recursive: true);
-    }
-    songData.dataPath = "$infoPath${songData.fileId}.txt";
-    print("song data contents: ${songData.jsonFromClass()}");
-    await File(songData.dataPath).writeAsString(jsonEncode(songData.jsonFromClass()));
-
-    print("created info file $infoPath/${songData.fileId}.txt");
-
-    Navigator.pushNamed(context, "/");
   }
 
   @override
