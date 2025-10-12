@@ -4,8 +4,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:spleeter_flutter_app/types/Playlists.dart';
-import 'package:spleeter_flutter_app/types/Settings.dart';
+import 'package:pitchy/types/playlists.dart';
+import 'package:pitchy/types/app_settings.dart';
 
 class NewPlaylist extends StatefulWidget {
   const NewPlaylist({super.key});

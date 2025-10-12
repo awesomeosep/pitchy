@@ -1,1 +1,1 @@
-# spleeter karake app
+# pitchy: a spleeter-based karaoke app

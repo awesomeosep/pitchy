@@ -1,4 +1,4 @@
-import 'package:spleeter_flutter_app/types/Playlists.dart';
+import 'package:pitchy/types/playlists.dart';
 
 class AppSettings {
   List<PlaylistData> playlists;

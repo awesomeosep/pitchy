@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:spleeter_flutter_app/home.dart';
-import 'package:spleeter_flutter_app/listen.dart';
-import 'package:spleeter_flutter_app/newPlaylist.dart';
-import 'package:spleeter_flutter_app/playlist.dart';
-import 'package:spleeter_flutter_app/split_song.dart';
+import 'package:pitchy/home.dart';
+import 'package:pitchy/listen.dart';
+import 'package:pitchy/new_playlist.dart';
+import 'package:pitchy/playlist.dart';
+import 'package:pitchy/split_song.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future main() async {
-  await dotenv.load();
+  await dotenv.load(fileName: ".env");
 
   runApp(
     MaterialApp(
-      title: 'Flutter Demo',
+      title: 'pitchy',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.red)),
-      // home: SplitSong(),
       routes: <String, WidgetBuilder>{
         '/': (BuildContext context) => const HomeList(),
         '/split': (BuildContext context) => const SplitSong(),

@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:spleeter_flutter_app/types/ListenArguments.dart';
-import 'package:spleeter_flutter_app/types/Settings.dart';
-import 'package:spleeter_flutter_app/types/SongData.dart';
+import 'package:pitchy/types/listen_arguments.dart';
+import 'package:pitchy/types/app_settings.dart';
+import 'package:pitchy/types/song_data.dart';
 
 class HomeList extends StatefulWidget {
   const HomeList({super.key});

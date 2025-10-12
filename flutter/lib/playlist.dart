@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:spleeter_flutter_app/types/ListenArguments.dart';
-import 'package:spleeter_flutter_app/types/Playlists.dart';
-import 'package:spleeter_flutter_app/types/Settings.dart';
+import 'package:pitchy/types/listen_arguments.dart';
+import 'package:pitchy/types/playlists.dart';
+import 'package:pitchy/types/app_settings.dart';
 import 'dart:io';
 
-import 'package:spleeter_flutter_app/types/SongData.dart';
+import 'package:pitchy/types/song_data.dart';
 
 class OpenPlaylist extends StatefulWidget {
   const OpenPlaylist({super.key});
@@ -160,7 +160,7 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
     playlistId = ModalRoute.of(context)!.settings.arguments as String;
 
     return Scaffold(
-      appBar: AppBar(title: Text(thisPlaylistData?.playlistName ?? 'Playlist')),
+      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: Text(thisPlaylistData?.playlistName ?? 'Playlist')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
@@ -273,7 +273,10 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                                       );
                                     }).toList(),
                                   )
-                                : Column(children: [Text("No songs found")]))
+                                : Padding(
+                                  padding: const EdgeInsets.fromLTRB(16.0, 0, 16, 16),
+                                  child: Column(children: [Text("No songs found")]),
+                                ))
                           : Text("Refresh to load songs"),
                     ],
                   ),
