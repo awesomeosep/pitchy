@@ -79,6 +79,9 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
           });
         } catch (e) {
           messenger.showSnackBar(SnackBar(content: Text('Could not load playlist ID $playlistId')));
+          setState(() {
+            loadingData = false;
+          });
         }
       }
       setState(() {

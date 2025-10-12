@@ -216,12 +216,19 @@ class _ListenState extends State<Listen> {
   }
 
   void saveSettings() async {
-    DataFile newSongData = songsData.firstWhere((item) => item.fileId == currentFileId);
-    newSongData.settings.pitch = currentPlayer == "accompaniment" ? mainPlayer.pitch : alternatePlayer.pitch;
-    newSongData.settings.volume = currentPlayer == "accompaniment" ? mainPlayer.volume : alternatePlayer.volume;
-    songsData[songsData.indexWhere((item) => item.fileId == currentFileId)] = newSongData;
-    await File(newSongData.dataPath).writeAsString(jsonEncode(newSongData.jsonFromClass()));
-    print("file saved");
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      DataFile newSongData = songsData.firstWhere((item) => item.fileId == currentFileId);
+      newSongData.settings.pitch = currentPlayer == "accompaniment" ? mainPlayer.pitch : alternatePlayer.pitch;
+      newSongData.settings.volume = currentPlayer == "accompaniment" ? mainPlayer.volume : alternatePlayer.volume;
+      songsData[songsData.indexWhere((item) => item.fileId == currentFileId)] = newSongData;
+      await File(newSongData.dataPath).writeAsString(jsonEncode(newSongData.jsonFromClass()));
+      print("file saved");
+      messenger.showSnackBar(SnackBar(content: Text("Saved song settings!")));
+    } catch (e) {
+      print("Error saving song settings ${e.toString()}");
+      messenger.showSnackBar(SnackBar(content: Text("Error saving song settings.")));
+    }
   }
 
   void changeSong(String songId, bool pause) async {

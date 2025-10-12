@@ -115,54 +115,60 @@ class _HomeListState extends State<HomeList> {
       splitSongFiles = [];
     });
 
-    // get song data
-    final directory = await getApplicationDocumentsDirectory();
-    final dataDirectoryPath = "${directory.path}/songs/data";
-    final dataDirectory = Directory(dataDirectoryPath);
-    final List<FileSystemEntity> files = dataDirectory.listSync(recursive: true);
-    setState(() {
-      splitSongFiles = files.where((entity) => entity is File && entity.path.endsWith(".txt")).toList();
-    });
-    for (int i = 0; i < splitSongFiles.length; i++) {
-      File thisFile = File(splitSongFiles[i].path);
-      String dataString = await thisFile.readAsString();
-      dynamic dataJson = jsonDecode(dataString);
-      print(dataJson);
-      DataFile fileData = DataFile.classFromTxt(dataJson);
+    try {
+      // get song data
+      final directory = await getApplicationDocumentsDirectory();
+      final dataDirectoryPath = "${directory.path}/songs/data";
+      final dataDirectory = Directory(dataDirectoryPath);
+      final List<FileSystemEntity> files = dataDirectory.listSync(recursive: true);
       setState(() {
-        splitSongData.add(fileData);
+        splitSongFiles = files.where((entity) => entity is File && entity.path.endsWith(".txt")).toList();
       });
-    }
-
-    // get playlists
-    final appSettingsPath = "${directory.path}/app/settings.txt";
-    final appSettingsDirectory = Directory("${directory.path}/app");
-    final appSettingsFile = File(appSettingsPath);
-    final appSettingsExists = await appSettingsFile.exists();
-    if (appSettingsExists) {
-      print("settings exists");
-      String settingsDataString = await appSettingsFile.readAsString();
-      dynamic settingsDataJson = jsonDecode(settingsDataString);
-      AppSettings settingsData = AppSettings.classFromTxt(settingsDataJson);
-      setState(() {
-        settings = settingsData;
-      });
-    } else {
-      print("settings does not exist");
-      if (!(await appSettingsDirectory.exists())) {
-        await appSettingsDirectory.create(recursive: true);
+      for (int i = 0; i < splitSongFiles.length; i++) {
+        File thisFile = File(splitSongFiles[i].path);
+        String dataString = await thisFile.readAsString();
+        dynamic dataJson = jsonDecode(dataString);
+        print(dataJson);
+        DataFile fileData = DataFile.classFromTxt(dataJson);
+        setState(() {
+          splitSongData.add(fileData);
+        });
       }
-      final newSettings = AppSettings([]).jsonFromClass();
-      await File(appSettingsPath).writeAsString(jsonEncode(newSettings));
-    }
 
-    setState(() {
-      gotFiles = true;
-      loadingData = false;
-    });
-    if (isRefresh) {
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(SnackBar(content: Text("Refreshed!")));
+      // get playlists
+      final appSettingsPath = "${directory.path}/app/settings.txt";
+      final appSettingsDirectory = Directory("${directory.path}/app");
+      final appSettingsFile = File(appSettingsPath);
+      final appSettingsExists = await appSettingsFile.exists();
+      if (appSettingsExists) {
+        print("settings exists");
+        String settingsDataString = await appSettingsFile.readAsString();
+        dynamic settingsDataJson = jsonDecode(settingsDataString);
+        AppSettings settingsData = AppSettings.classFromTxt(settingsDataJson);
+        setState(() {
+          settings = settingsData;
+        });
+      } else {
+        print("settings does not exist");
+        if (!(await appSettingsDirectory.exists())) {
+          await appSettingsDirectory.create(recursive: true);
+        }
+        final newSettings = AppSettings([]).jsonFromClass();
+        await File(appSettingsPath).writeAsString(jsonEncode(newSettings));
+      }
+
+      setState(() {
+        gotFiles = true;
+        loadingData = false;
+      });
+      if (isRefresh) {
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(SnackBar(content: Text("Refreshed!")));
+      }
+    } catch (e) {
+      setState(() {
+        loadingData = false;
+      });
     }
     print(splitSongData);
   }

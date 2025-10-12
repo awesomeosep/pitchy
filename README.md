@@ -36,3 +36,4 @@ flutter run
 - Dark mode
 - Song "groups" (by artist, genre, etc)
 - Lyrics
+- Increase song splitting time? 😬
