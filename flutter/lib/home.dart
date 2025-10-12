@@ -20,6 +20,14 @@ class _HomeListState extends State<HomeList> {
   List<DataFile> splitSongData = [];
   String viewMode = "uploads";
   AppSettings? settings;
+  bool loadingData = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    getFiles();
+  }
 
   Future<void> deleteSong(String fileId) async {
     final dataFile = File(splitSongData.where((i) => i.fileId == fileId).toList()[0].dataPath);
@@ -92,6 +100,7 @@ class _HomeListState extends State<HomeList> {
 
   Future<void> getFiles() async {
     setState(() {
+      loadingData = true;
       splitSongData = [];
       splitSongFiles = [];
     });
@@ -139,6 +148,7 @@ class _HomeListState extends State<HomeList> {
 
     setState(() {
       gotFiles = true;
+      loadingData = false;
     });
     print(splitSongData);
   }
@@ -217,60 +227,68 @@ class _HomeListState extends State<HomeList> {
                   children: [
                     Text("All Uploads", style: TextStyle(fontSize: 18.0)),
                     SizedBox(height: 16),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      direction: Axis.horizontal,
-                      children: [
-                        FilledButton.tonalIcon(
-                          style: ButtonStyle(
-                            padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                    loadingData
+                        ? CircularProgressIndicator()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                direction: Axis.horizontal,
+                                children: [
+                                  FilledButton.tonalIcon(
+                                    style: ButtonStyle(
+                                      padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                                    ),
+                                    label: Text("Refresh"),
+                                    onPressed: () async {
+                                      await getFiles();
+                                    },
+                                    icon: Icon(Icons.refresh),
+                                  ),
+                                  FilledButton.tonalIcon(
+                                    style: ButtonStyle(
+                                      padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                                    ),
+                                    label: Text("Delete All"),
+                                    onPressed: () async {
+                                      await deleteAll();
+                                    },
+                                    icon: Icon(Icons.delete),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                              (gotFiles)
+                                  ? (splitSongData.isNotEmpty
+                                        ? Column(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: splitSongData.map((file) {
+                                              return ListTile(
+                                                leading: Icon(Icons.music_note),
+                                                title: Text(file.fileName),
+                                                trailing: IconButton(
+                                                  icon: Icon(Icons.delete),
+                                                  onPressed: () {
+                                                    deleteSong(file.fileId);
+                                                  },
+                                                ),
+                                                onTap: () => {
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    '/listen',
+                                                    arguments: ListenArguments("song", "", file.fileId),
+                                                  ),
+                                                },
+                                              );
+                                            }).toList(),
+                                          )
+                                        : Text("No songs found"))
+                                  : Text("Refresh to load songs"),
+                            ],
                           ),
-                          label: Text("Refresh"),
-                          onPressed: () async {
-                            await getFiles();
-                          },
-                          icon: Icon(Icons.refresh),
-                        ),
-                        FilledButton.tonalIcon(
-                          style: ButtonStyle(
-                            padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
-                          ),
-                          label: Text("Delete All"),
-                          onPressed: () async {
-                            await deleteAll();
-                          },
-                          icon: Icon(Icons.delete),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    (gotFiles)
-                        ? (splitSongData.isNotEmpty
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: splitSongData.map((file) {
-                                    return ListTile(
-                                      leading: Icon(Icons.music_note),
-                                      title: Text(file.fileName),
-                                      trailing: IconButton(
-                                        icon: Icon(Icons.delete),
-                                        onPressed: () {
-                                          deleteSong(file.fileId);
-                                        },
-                                      ),
-                                      onTap: () => {
-                                        Navigator.pushNamed(
-                                          context,
-                                          '/listen',
-                                          arguments: ListenArguments("song", "", file.fileId),
-                                        ),
-                                      },
-                                    );
-                                  }).toList(),
-                                )
-                              : Text("No songs found"))
-                        : Text("Refresh to load songs"),
                   ],
                 )
               : Column(
@@ -278,66 +296,68 @@ class _HomeListState extends State<HomeList> {
                   children: [
                     Text("Playlists", style: TextStyle(fontSize: 18.0)),
                     SizedBox(height: 16),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      direction: Axis.horizontal,
-                      children: [
-                        // FilledButton.tonalIcon(
-                        //   style: ButtonStyle(
-                        //     padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
-                        //   ),
-                        //   label: Text("New Playlist"),
-                        //   onPressed: () async {
-                        //     Navigator.pushNamed(context, "/newPlaylist");
-                        //   },
-                        //   icon: Icon(Icons.add),
-                        // ),
-                        FilledButton.tonalIcon(
-                          style: ButtonStyle(
-                            padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                    loadingData
+                        ? CircularProgressIndicator()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                direction: Axis.horizontal,
+                                children: [
+                                  FilledButton.tonalIcon(
+                                    style: ButtonStyle(
+                                      padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                                    ),
+                                    label: Text("Refresh"),
+                                    onPressed: () async {
+                                      await getFiles();
+                                    },
+                                    icon: Icon(Icons.refresh),
+                                  ),
+                                  FilledButton.tonalIcon(
+                                    style: ButtonStyle(
+                                      padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
+                                    ),
+                                    label: Text("Delete All"),
+                                    onPressed: () async {
+                                      await deleteAllPlaylists();
+                                    },
+                                    icon: Icon(Icons.delete),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                              (gotFiles)
+                                  ? (settings!.playlists.isNotEmpty
+                                        ? Column(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: settings!.playlists.map((playlist) {
+                                              return ListTile(
+                                                leading: Icon(Icons.playlist_play),
+                                                title: Text(playlist.playlistName),
+                                                trailing: IconButton(
+                                                  icon: Icon(Icons.delete),
+                                                  onPressed: () {
+                                                    deletePlaylist(playlist.playlistId);
+                                                  },
+                                                ),
+                                                onTap: () => {
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    '/openPlaylist',
+                                                    arguments: playlist.playlistId,
+                                                  ),
+                                                },
+                                              );
+                                            }).toList(),
+                                          )
+                                        : Text("No playlists found"))
+                                  : Text("Refresh to load songs"),
+                            ],
                           ),
-                          label: Text("Refresh"),
-                          onPressed: () async {
-                            await getFiles();
-                          },
-                          icon: Icon(Icons.refresh),
-                        ),
-                        FilledButton.tonalIcon(
-                          style: ButtonStyle(
-                            padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
-                          ),
-                          label: Text("Delete All"),
-                          onPressed: () async {
-                            await deleteAllPlaylists();
-                          },
-                          icon: Icon(Icons.delete),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    (gotFiles)
-                        ? (settings!.playlists.isNotEmpty
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: settings!.playlists.map((playlist) {
-                                    return ListTile(
-                                      leading: Icon(Icons.playlist_play),
-                                      title: Text(playlist.playlistName),
-                                      trailing: IconButton(
-                                        icon: Icon(Icons.delete),
-                                        onPressed: () {
-                                          deletePlaylist(playlist.playlistId);
-                                        },
-                                      ),
-                                      onTap: () => {
-                                        Navigator.pushNamed(context, '/openPlaylist', arguments: playlist.playlistId),
-                                      },
-                                    );
-                                  }).toList(),
-                                )
-                              : Text("No playlists found"))
-                        : Text("Refresh to load songs"),
                   ],
                 ),
         ),
