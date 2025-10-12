@@ -10,7 +10,6 @@ class DataFile {
   DataFile(this.fileId, this.fileName, this.dataPath, this.songPaths, this.splitType, this.uploadedDate, this.settings);
 
   static DataFile classFromTxt(dynamic json) {
-    print(json["settings"]);
     return DataFile(
       json["fileId"],
       json["fileName"],

@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:spleeter_flutter_app/types/SongData.dart';
+import 'package:pitchy/types/song_data.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SplitSong extends StatefulWidget {
@@ -25,6 +25,7 @@ class _SplitSongState extends State<SplitSong> {
   List<int>? zipBytes;
   bool currentlyPlaying = false;
   bool loadingSplit = false;
+  String sendError = "";
 
   Future<void> pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.audio);
@@ -43,13 +44,13 @@ class _SplitSongState extends State<SplitSong> {
     print("starting request");
     setState(() {
       loadingSplit = true;
+      sendError = "";
     });
-    final apiUrl = dotenv.env["SPLEETER_API_URL"] ?? "error";
-    var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
-
-    request.files.add(await http.MultipartFile.fromPath('song_file', pickedFile!.path));
-
     try {
+      final apiUrl = dotenv.env["SPLEETER_API_URL"] ?? "error";
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+
+      request.files.add(await http.MultipartFile.fromPath('song_file', pickedFile!.path));
       var response = await request.send();
 
       if (response.statusCode == 200) {
@@ -65,6 +66,9 @@ class _SplitSongState extends State<SplitSong> {
         print('File sent failed with status: ${response.statusCode}');
       }
     } catch (e) {
+      setState(() {
+        sendError = "Error splitting song: ${e.toString()}";
+      });
       print('Error sending file: $e');
     }
     setState(() {
@@ -136,7 +140,7 @@ class _SplitSongState extends State<SplitSong> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: Text("Home")),
+      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary, title: Text("Upload Song")),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -159,6 +163,7 @@ class _SplitSongState extends State<SplitSong> {
                         children: [Icon(Icons.audio_file), SizedBox(width: 8), Text(pickedFile!.path.split('/').last)],
                       ),
                       SizedBox(height: 16),
+                      sendError != "" ? Column(children: [Text(sendError), SizedBox(height: 16)]) : Container(),
                       FilledButton(
                         onPressed: loadingSplit ? null : stripFile,
                         child: Row(
@@ -184,12 +189,15 @@ class _SplitSongState extends State<SplitSong> {
                       TextButton.icon(
                         icon: Icon(Icons.arrow_back),
                         label: Text("Pick different file"),
-                        onPressed: loadingSplit ? null : () {
-                          setState(() {
-                            pickedFile = null;
-                            step = 0;
-                          });
-                        },
+                        onPressed: loadingSplit
+                            ? null
+                            : () {
+                                setState(() {
+                                  sendError = "";
+                                  pickedFile = null;
+                                  step = 0;
+                                });
+                              },
                       ),
                     ],
                   )
