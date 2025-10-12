@@ -126,7 +126,7 @@ class _ListenState extends State<Listen> {
           } else if (group == "song") {
             final directory = await getApplicationDocumentsDirectory();
             final dataFile = File("${directory.path}/songs/data/$currentFileId.txt");
-            if (currentFileId != null && dataFile != null) {
+            if (currentFileId != null) {
               String dataString = await dataFile.readAsString();
               dynamic dataJson = jsonDecode(dataString);
               setState(() {

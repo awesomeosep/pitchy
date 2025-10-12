@@ -45,7 +45,7 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
           // get settings
           final directory = await getApplicationDocumentsDirectory();
           final settingsFile = File("${directory.path}/app/settings.txt");
-          if (playlistId != null && settingsFile != null) {
+          if (playlistId != null) {
             setState(() {
               allUserSongsData = [];
             });
