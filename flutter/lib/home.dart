@@ -21,12 +21,22 @@ class _HomeListState extends State<HomeList> {
   String viewMode = "uploads";
   AppSettings? settings;
   bool loadingData = false;
+  late String? pageArguments;
 
   @override
   void initState() {
     super.initState();
 
-    getFiles();
+    getFiles(false);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final arg = ModalRoute.of(context)?.settings.arguments;
+      if (arg is String) {
+        setState(() {
+          viewMode = (arg == "uploads" || arg == "playlists") ? arg : "uploads";
+        });
+      }
+    });
   }
 
   Future<void> deleteSong(String fileId) async {
@@ -34,7 +44,7 @@ class _HomeListState extends State<HomeList> {
     if (await dataFile.exists()) {
       await dataFile.delete();
       print('Data file deleted successfully');
-      getFiles();
+      getFiles(false);
     } else {
       print('Data file does not exist');
     }
@@ -54,7 +64,7 @@ class _HomeListState extends State<HomeList> {
     newSettings.playlists = newSettings.playlists.where((item) => item.playlistId != playlistId).toList();
     final newSettingsJson = newSettings.jsonFromClass();
     await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
-    getFiles();
+    getFiles(false);
   }
 
   Future<void> deleteAll() async {
@@ -68,7 +78,7 @@ class _HomeListState extends State<HomeList> {
         }
       }
       print('All files in the folder deleted successfully!');
-      getFiles();
+      getFiles(false);
     } else {
       print('Folder does not exist.');
     }
@@ -95,10 +105,10 @@ class _HomeListState extends State<HomeList> {
     final newSettingsJson = newSettings.jsonFromClass();
     print(newSettingsJson);
     await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
-    getFiles();
+    getFiles(false);
   }
 
-  Future<void> getFiles() async {
+  Future<void> getFiles(bool isRefresh) async {
     setState(() {
       loadingData = true;
       splitSongData = [];
@@ -150,11 +160,17 @@ class _HomeListState extends State<HomeList> {
       gotFiles = true;
       loadingData = false;
     });
+    if (isRefresh) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(SnackBar(content: Text("Refreshed!")));
+    }
     print(splitSongData);
   }
 
   @override
   Widget build(BuildContext context) {
+    pageArguments = ModalRoute.of(context)!.settings.arguments as String?;
+
     return Scaffold(
       drawer: Drawer(
         child: ListView(
@@ -244,7 +260,7 @@ class _HomeListState extends State<HomeList> {
                                     ),
                                     label: Text("Refresh"),
                                     onPressed: () async {
-                                      await getFiles();
+                                      await getFiles(true);
                                     },
                                     icon: Icon(Icons.refresh),
                                   ),
@@ -313,7 +329,7 @@ class _HomeListState extends State<HomeList> {
                                     ),
                                     label: Text("Refresh"),
                                     onPressed: () async {
-                                      await getFiles();
+                                      await getFiles(true);
                                     },
                                     icon: Icon(Icons.refresh),
                                   ),
