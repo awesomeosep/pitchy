@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-// import 'package:just_audio/just_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pitchy/types/listen_arguments.dart';
 import 'package:pitchy/types/playlists.dart';
 import 'package:pitchy/types/app_settings.dart';
 import 'dart:io';
-// import 'dart:async';
 import 'dart:math';
 import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:pitchy/types/song_data.dart';
@@ -29,12 +27,6 @@ class _ListenState extends State<Listen> {
   late String? currentFileId;
   List<List<File>> songFiles = [];
   List<DataFile> songsData = [];
-  // final mainPlayer = AudioPlayer();
-  // final alternatePlayer = AudioPlayer();
-  // bool mainCurrentlyPlaying = false;
-  // bool alternateCurrentlyPlaying = false;
-  // StreamSubscription<PlayerState>? _mainPlayerStateSub;
-  // StreamSubscription<PlayerState>? _alternatePlayerStateSub;
   int _semitones = 0;
   double _volume = 1.0;
   double _lastVolume = 1.0;
@@ -511,18 +503,6 @@ class _ListenState extends State<Listen> {
                                                           .split("_")
                                                           .last,
                                                     ),
-                                                    // labelStyle: TextStyle(
-                                                    //   fontWeight: FontWeight.bold,
-                                                    //   color:
-                                                    //       songsData
-                                                    //               .firstWhere((item) => item.fileId == currentFileId)
-                                                    //               .songPaths
-                                                    //               .indexOf(item)
-                                                    //               .toString() ==
-                                                    //           trackIndex.toString()
-                                                    //       ? Colors.white
-                                                    //       : Colors.black,
-                                                    // ),
                                                     selected:
                                                         songsData
                                                             .firstWhere((item) => item.fileId == currentFileId)
@@ -621,8 +601,6 @@ class _ListenState extends State<Listen> {
                                                       if (!_muted) _lastVolume = _volume;
                                                     });
                                                     SoLoud.instance.setVolume(soundHandle!, _volume);
-                                                    // mainPlayer.setVolume(_volume);
-                                                    // alternatePlayer.setVolume(_volume);
                                                   },
                                                 ),
                                               ],
@@ -645,8 +623,6 @@ class _ListenState extends State<Listen> {
                                                     }
                                                   });
                                                   SoLoud.instance.setVolume(soundHandle!, _volume);
-                                                  // mainPlayer.setVolume(_volume);
-                                                  // alternatePlayer.setVolume(_volume);
                                                 },
                                                 icon: Icon(_muted ? Icons.volume_off : Icons.volume_up),
                                               ),
