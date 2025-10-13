@@ -32,6 +32,7 @@ flutter run
 
 ## 📃 TODO Features:
 - Add [more audio adjustments](https://pub.dev/packages/flutter_soloud), like echo and reverb
+- Reorder playlsits & queues
 - Swipe to refresh
 - Dark mode
 - Song "groups" (by artist, genre, etc)

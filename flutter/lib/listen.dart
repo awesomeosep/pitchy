@@ -1,16 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:just_audio/just_audio.dart';
+// import 'package:just_audio/just_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pitchy/types/listen_arguments.dart';
 import 'package:pitchy/types/playlists.dart';
 import 'package:pitchy/types/app_settings.dart';
 import 'dart:io';
-import 'dart:async';
+// import 'dart:async';
 import 'dart:math';
-
+import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:pitchy/types/song_data.dart';
+import 'package:just_audio/just_audio.dart' as justaudio;
 
 class Listen extends StatefulWidget {
   const Listen({super.key});
@@ -27,12 +29,12 @@ class _ListenState extends State<Listen> {
   late String? currentFileId;
   List<List<File>> songFiles = [];
   List<DataFile> songsData = [];
-  final mainPlayer = AudioPlayer();
-  final alternatePlayer = AudioPlayer();
-  bool mainCurrentlyPlaying = false;
-  bool alternateCurrentlyPlaying = false;
-  StreamSubscription<PlayerState>? _mainPlayerStateSub;
-  StreamSubscription<PlayerState>? _alternatePlayerStateSub;
+  // final mainPlayer = AudioPlayer();
+  // final alternatePlayer = AudioPlayer();
+  // bool mainCurrentlyPlaying = false;
+  // bool alternateCurrentlyPlaying = false;
+  // StreamSubscription<PlayerState>? _mainPlayerStateSub;
+  // StreamSubscription<PlayerState>? _alternatePlayerStateSub;
   int _semitones = 0;
   double _volume = 1.0;
   double _lastVolume = 1.0;
@@ -40,33 +42,18 @@ class _ListenState extends State<Listen> {
   int trackIndex = 0;
   List<File> trackFiles = [];
   String currentPlayer = "accompaniment";
+  SoundHandle? soundHandle;
+  AudioSource? currentAudioSource;
+  final _playerController = StreamController<SoLoud>.broadcast();
+  StreamSubscription? _playerSubscription;
+  Duration _currentPos = Duration.zero;
+  bool draggingPosSlider = false;
 
   double _pitchFromSemitones(int s) => pow(2, s / 12).toDouble();
 
   @override
   void initState() {
     super.initState();
-    _mainPlayerStateSub = mainPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
-        if (songsData.indexWhere((element) => element.fileId == currentFileId) != (songsData.length - 1)) {
-          changeSong(songsData[songsData.indexWhere((element) => element.fileId == currentFileId) + 1].fileId, true);
-        }
-      }
-      setState(() {
-        mainCurrentlyPlaying = state.playing;
-      });
-    });
-
-    _alternatePlayerStateSub = alternatePlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
-        if (songsData.indexWhere((element) => element.fileId == currentFileId) != (songsData.length - 1)) {
-          changeSong(songsData[songsData.indexWhere((element) => element.fileId == currentFileId) + 1].fileId, true);
-        }
-      }
-      setState(() {
-        alternateCurrentlyPlaying = state.playing;
-      });
-    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final arg = ModalRoute.of(context)?.settings.arguments;
@@ -143,38 +130,38 @@ class _ListenState extends State<Listen> {
               });
             }
           }
-
-          await mainPlayer.setAudioSources(
-            songsData
-                .map(
-                  (item) => AudioSource.uri(
-                    Uri.file(
-                      songFiles[songsData.indexOf(item)][songFiles[songsData.indexOf(item)].indexWhere(
-                            (item) => item.path.contains("accompaniment"),
-                          )]
-                          .path,
-                    ),
-                  ),
-                )
-                .toList(),
+          final directory = await getApplicationDocumentsDirectory();
+          final newPlayer = justaudio.AudioPlayer();
+          newPlayer.addAudioSource(
+            justaudio.AudioSource.uri(
+              Uri.file(
+                songFiles[songsData.indexWhere((item) => item.fileId == currentFileId)][songFiles[songsData.indexWhere(
+                          (item) => item.fileId == currentFileId,
+                        )]
+                        .indexWhere((item) => item.path.contains("accompaniment"))]
+                    .path,
+              ),
+            ),
           );
-          await alternatePlayer.setAudioSources(
-            songsData
-                .map(
-                  (item) => AudioSource.uri(
-                    Uri.file(
-                      songFiles[songsData.indexOf(item)][songFiles[songsData.indexOf(item)].indexWhere(
-                            (item) => item.path.contains("vocals"),
-                          )]
-                          .path,
-                    ),
-                  ),
-                )
-                .toList(),
+          print(directory);
+          final audioSource = currentAudioSource = await SoLoud.instance.loadFile(
+            File(
+              songFiles[songsData.indexWhere((item) => item.fileId == currentFileId)][songFiles[songsData.indexWhere(
+                        (item) => item.fileId == currentFileId,
+                      )]
+                      .indexWhere((item) => item.path.contains("accompaniment"))]
+                  .path,
+            ).path,
           );
-          changeSong(currentFileId!, true);
-          await mainPlayer.setLoopMode(LoopMode.off);
-          await alternatePlayer.setLoopMode(LoopMode.off);
+          setState(() {
+            currentAudioSource = audioSource;
+          });
+          final tempSoundHandle = await SoLoud.instance.play(currentAudioSource!);
+          setState(() {
+            soundHandle = tempSoundHandle;
+          });
+          SoLoud.instance.setLooping(soundHandle!, false);
+          await changeSong(currentFileId!, true);
         } catch (e) {
           messenger.showSnackBar(SnackBar(content: Text('Could not load file ID $currentFileId')));
           print(e);
@@ -183,12 +170,34 @@ class _ListenState extends State<Listen> {
     });
   }
 
+  void _startPlayerStream(SoundHandle handle) {
+    _playerSubscription?.cancel();
+
+    _playerSubscription = Stream.periodic(const Duration(milliseconds: 200)).listen((_) {
+      try {
+        final currentPosition = SoLoud.instance;
+        _playerController.add(currentPosition);
+      } catch (e) {
+        _playerController.addError(e);
+        _playerSubscription?.cancel();
+      }
+    });
+
+    currentAudioSource!.allInstancesFinished.first.then((_) {
+      SoLoud.instance.disposeAllSources();
+      if (songsData.indexWhere((item) => item.fileId == currentFileId) != (songsData.length - 1)) {
+        changeSong(songsData[songsData.indexWhere((element) => element.fileId == currentFileId) + 1].fileId, false);
+      } else {
+        changeSong(songsData[songsData.indexWhere((element) => element.fileId == currentFileId)].fileId, false);
+      }
+    });
+  }
+
   @override
   void dispose() {
-    _mainPlayerStateSub?.cancel();
-    _alternatePlayerStateSub?.cancel();
-    mainPlayer.dispose();
-    alternatePlayer.dispose();
+    SoLoud.instance.disposeAllSources();
+    _playerSubscription?.cancel();
+    _playerController.close();
     super.dispose();
   }
 
@@ -200,18 +209,22 @@ class _ListenState extends State<Listen> {
           ? "accompaniment"
           : "vocals";
     });
-    if (currentPlayer == "accompaniment") {
-      alternatePlayer.pause();
-      mainPlayer.seek(Duration.zero);
-    } else {
-      mainPlayer.pause();
-      alternatePlayer.seek(Duration.zero);
-    }
+    SoLoud.instance.disposeAllSources();
+    final tempAsset = await SoLoud.instance.loadFile(
+      songFiles[songsData.indexWhere((item) => item.fileId == currentFileId)][newIdx].path,
+    );
     setState(() {
-      _semitones = (12 * (log(currentPlayer == "accompaniment" ? mainPlayer.pitch : alternatePlayer.pitch) / log(2)))
-          .round();
-      _volume = currentPlayer == "accompaniment" ? mainPlayer.volume : alternatePlayer.volume;
-      _lastVolume = _volume;
+      currentAudioSource = tempAsset;
+    });
+    final tempSoundHandle = await SoLoud.instance.play(currentAudioSource!);
+    setState(() {
+      soundHandle = tempSoundHandle;
+    });
+    _startPlayerStream(soundHandle!);
+    SoLoud.instance.setPause(soundHandle!, true);
+    SoLoud.instance.seek(soundHandle!, Duration.zero);
+    setState(() {
+      _currentPos = Duration.zero;
     });
   }
 
@@ -219,8 +232,9 @@ class _ListenState extends State<Listen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       DataFile newSongData = songsData.firstWhere((item) => item.fileId == currentFileId);
-      newSongData.settings.pitch = currentPlayer == "accompaniment" ? mainPlayer.pitch : alternatePlayer.pitch;
-      newSongData.settings.volume = currentPlayer == "accompaniment" ? mainPlayer.volume : alternatePlayer.volume;
+
+      newSongData.settings.pitch = _pitchFromSemitones(_semitones);
+      newSongData.settings.volume = _volume;
       songsData[songsData.indexWhere((item) => item.fileId == currentFileId)] = newSongData;
       await File(newSongData.dataPath).writeAsString(jsonEncode(newSongData.jsonFromClass()));
       print("file saved");
@@ -231,57 +245,39 @@ class _ListenState extends State<Listen> {
     }
   }
 
-  void changeSong(String songId, bool pause) async {
+  Future<void> changeSong(String songId, bool pause) async {
     setState(() {
       currentFileId = songId;
-      print(currentFileId);
     });
-    mainPlayer.setAudioSource(
-      AudioSource.uri(
-        Uri.file(
-          songFiles[songsData.indexWhere((item) => item.fileId == songId)]
-              .firstWhere((item) => item.path.contains("accompaniment"))
-              .path,
-        ),
-      ),
-    );
-    alternatePlayer.setAudioSource(
-      AudioSource.uri(
-        Uri.file(
-          songFiles[songsData.indexWhere((item) => item.fileId == songId)]
-              .firstWhere((item) => item.path.contains("vocals"))
-              .path,
-        ),
-      ),
-    );
-    mainPlayer.seek(Duration.zero);
-    alternatePlayer.seek(Duration.zero);
-    setSongDefaultSettings(songId);
     changeTrack(
       songFiles[songsData.indexWhere((item) => item.fileId == currentFileId)].indexWhere(
         (item) => item.path.contains("accompaniment"),
       ),
     );
+    setSongDefaultSettings(songId);
     if (pause) {
-      mainPlayer.pause();
-      alternatePlayer.pause();
+      SoLoud.instance.setPause(soundHandle!, true);
     }
   }
 
   void setSongDefaultSettings(String songId) async {
-    mainPlayer.seek(Duration.zero);
+    SoLoud.instance.setPause(soundHandle!, true);
     print(songsData.firstWhere((item) => item.fileId == songId).settings.volume);
     print(songsData.firstWhere((item) => item.fileId == songId).settings.pitch);
-    await mainPlayer.setVolume(songsData.firstWhere((item) => item.fileId == songId).settings.volume);
-    await mainPlayer.setPitch(songsData.firstWhere((item) => item.fileId == songId).settings.pitch);
-    await mainPlayer.setLoopMode(LoopMode.off);
-    alternatePlayer.seek(Duration.zero);
-    await alternatePlayer.setVolume(songsData.firstWhere((item) => item.fileId == songId).settings.volume);
-    await alternatePlayer.setPitch(songsData.firstWhere((item) => item.fileId == songId).settings.pitch);
-    await alternatePlayer.setLoopMode(LoopMode.off);
+    SoLoud.instance.setVolume(soundHandle!, songsData.firstWhere((item) => item.fileId == songId).settings.volume);
+    if (!SoLoud.instance.filters.pitchShiftFilter.isActive) {
+      SoLoud.instance.filters.pitchShiftFilter.activate();
+    }
+    SoLoud.instance.filters.pitchShiftFilter.shift.value = songsData
+        .firstWhere((item) => item.fileId == songId)
+        .settings
+        .pitch;
+    SoLoud.instance.setLooping(soundHandle!, false);
+    // SoLoud.instance.seek(soundHandle!, Duration.zero);
     setState(() {
-      _semitones = (12 * (log(mainPlayer.pitch) / log(2))).round();
-      _volume = mainPlayer.volume;
+      _currentPos = SoLoud.instance.getPosition(soundHandle!);
+      _semitones = (12 * (log(songsData.firstWhere((item) => item.fileId == songId).settings.pitch) / log(2))).round();
+      _volume = songsData.firstWhere((item) => item.fileId == songId).settings.volume;
       _lastVolume = _volume;
     });
   }
@@ -336,7 +332,7 @@ class _ListenState extends State<Listen> {
                             return Container(
                               decoration: const BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                               ),
                               child: Column(
                                 children: [
@@ -393,7 +389,7 @@ class _ListenState extends State<Listen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 12.0 + bottomInset),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.max,
@@ -411,246 +407,272 @@ class _ListenState extends State<Listen> {
                   ],
                 ),
                 SizedBox(height: 8),
-                StreamBuilder<Duration?>(
-                  stream: currentPlayer == "accompaniment" ? mainPlayer.durationStream : alternatePlayer.durationStream,
-                  builder: (context, snapDur) {
-                    final total = snapDur.data ?? Duration.zero;
-                    return StreamBuilder<Duration>(
-                      stream: currentPlayer == "accompaniment"
-                          ? mainPlayer.positionStream
-                          : alternatePlayer.positionStream,
-                      builder: (context, snapPos) {
-                        final pos = snapPos.data ?? Duration.zero;
-                        double value = total.inMilliseconds > 0 ? pos.inMilliseconds / total.inMilliseconds : 0.0;
-                        return Column(
-                          children: [
-                            Slider(
-                              value: value.clamp(0.0, 1.0),
-                              onChanged: (v) {
-                                if (total.inMilliseconds > 0) {
-                                  if (currentPlayer == "accompaniment") {
-                                    mainPlayer.seek(Duration(milliseconds: (v * total.inMilliseconds).round()));
-                                  } else {
-                                    alternatePlayer.seek(Duration(milliseconds: (v * total.inMilliseconds).round()));
-                                  }
-                                }
-                              },
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [Text(_formatDuration(pos)), Text(_formatDuration(total))],
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton.filledTonal(
-                      onPressed: () {
-                        if (currentPlayer == "accompaniment") {
-                          if (mainPlayer.playing) {
-                            mainPlayer.pause();
-                          } else {
-                            mainPlayer.play();
+                (currentAudioSource != null && soundHandle != null)
+                    ? StreamBuilder(
+                        stream: _playerController.stream,
+                        initialData: null,
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return const Text("Error loading audio");
                           }
-                        } else {
-                          if (alternatePlayer.playing) {
-                            alternatePlayer.pause();
-                          } else {
-                            alternatePlayer.play();
-                          }
-                        }
-                      },
-                      icon: currentPlayer == "accompaniment"
-                          ? (mainCurrentlyPlaying ? Icon(Icons.pause) : Icon(Icons.play_arrow))
-                          : (alternateCurrentlyPlaying ? Icon(Icons.pause) : Icon(Icons.play_arrow)),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Card(
-                  margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16.0, 8, 16, 16),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Text("Track", style: TextStyle(fontWeight: FontWeight.w600)),
-                            SizedBox(width: 16),
-                            Wrap(
-                              runSpacing: 8,
-                              spacing: 8,
-                              children: songsData
-                                  .firstWhere((item) => item.fileId == currentFileId)
-                                  .songPaths
-                                  .map(
-                                    (item) => ChoiceChip(
-                                      onSelected: (value) {
-                                        if (value == true) {
-                                          changeTrack(
-                                            songsData
+
+                          final Duration pos = snapshot.data?.getPosition(soundHandle!) ?? Duration.zero;
+                          final Duration total = snapshot.data?.getLength(currentAudioSource!) ?? Duration.zero;
+                          final bool paused = snapshot.data?.getPause(soundHandle!) ?? false;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Column(
+                                children: [
+                                  Slider(
+                                    value: draggingPosSlider
+                                        ? ((total.inMilliseconds > 0
+                                                  ? _currentPos.inMilliseconds / total.inMilliseconds
+                                                  : 0.0)
+                                              .clamp(0.0, 1.0))
+                                        : ((total.inMilliseconds > 0 ? pos.inMilliseconds / total.inMilliseconds : 0.0)
+                                              .clamp(0.0, 1.0)),
+                                    onChangeStart: (v) {
+                                      setState(() {
+                                        draggingPosSlider = true;
+                                      });
+                                    },
+                                    onChanged: (v) {
+                                      setState(() {
+                                        _currentPos = Duration(milliseconds: (v * total.inMilliseconds).round());
+                                      });
+                                    },
+                                    onChangeEnd: (v) {
+                                      setState(() {
+                                        draggingPosSlider = false;
+                                        _currentPos = Duration(milliseconds: (v * total.inMilliseconds).round());
+                                      });
+                                      if (total.inMilliseconds > 0) {
+                                        SoLoud.instance.seek(
+                                          soundHandle!,
+                                          Duration(milliseconds: (v * total.inMilliseconds).round()),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [Text(_formatDuration(pos)), Text(_formatDuration(total))],
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton.filledTonal(
+                                    onPressed: () {
+                                      SoLoud.instance.pauseSwitch(soundHandle!);
+                                    },
+                                    icon: paused ? Icon(Icons.play_arrow) : Icon(Icons.pause),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16),
+                              Card(
+                                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(16.0, 8, 16, 16),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text("Track", style: TextStyle(fontWeight: FontWeight.w600)),
+                                          SizedBox(width: 16),
+                                          Wrap(
+                                            runSpacing: 8,
+                                            spacing: 8,
+                                            children: songsData
                                                 .firstWhere((item) => item.fileId == currentFileId)
                                                 .songPaths
-                                                .indexOf(item),
-                                          );
-                                        }
-                                      },
-                                      label: Text(
-                                        item.split(".").sublist(0, (item.split(".").length - 1)).last.split("_").last,
+                                                .map(
+                                                  (item) => ChoiceChip(
+                                                    onSelected: (value) {
+                                                      if (value == true) {
+                                                        changeTrack(
+                                                          songsData
+                                                              .firstWhere((item) => item.fileId == currentFileId)
+                                                              .songPaths
+                                                              .indexOf(item),
+                                                        );
+                                                      }
+                                                    },
+                                                    label: Text(
+                                                      item
+                                                          .split(".")
+                                                          .sublist(0, (item.split(".").length - 1))
+                                                          .last
+                                                          .split("_")
+                                                          .last,
+                                                    ),
+                                                    // labelStyle: TextStyle(
+                                                    //   fontWeight: FontWeight.bold,
+                                                    //   color:
+                                                    //       songsData
+                                                    //               .firstWhere((item) => item.fileId == currentFileId)
+                                                    //               .songPaths
+                                                    //               .indexOf(item)
+                                                    //               .toString() ==
+                                                    //           trackIndex.toString()
+                                                    //       ? Colors.white
+                                                    //       : Colors.black,
+                                                    // ),
+                                                    selected:
+                                                        songsData
+                                                            .firstWhere((item) => item.fileId == currentFileId)
+                                                            .songPaths
+                                                            .indexOf(item)
+                                                            .toString() ==
+                                                        trackIndex.toString(),
+                                                    selectedColor: Theme.of(context).colorScheme.primaryContainer,
+                                                    backgroundColor: Colors.transparent,
+                                                  ),
+                                                )
+                                                .toList(),
+                                          ),
+                                        ],
                                       ),
-                                      // labelStyle: TextStyle(
-                                      //   fontWeight: FontWeight.bold,
-                                      //   color:
-                                      //       songsData
-                                      //               .firstWhere((item) => item.fileId == currentFileId)
-                                      //               .songPaths
-                                      //               .indexOf(item)
-                                      //               .toString() ==
-                                      //           trackIndex.toString()
-                                      //       ? Colors.white
-                                      //       : Colors.black,
-                                      // ),
-                                      selected:
-                                          songsData
-                                              .firstWhere((item) => item.fileId == currentFileId)
-                                              .songPaths
-                                              .indexOf(item)
-                                              .toString() ==
-                                          trackIndex.toString(),
-                                      selectedColor: Theme.of(context).colorScheme.primaryContainer,
-                                      backgroundColor: Colors.transparent,
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Pitch (semitones)', style: TextStyle(fontWeight: FontWeight.w600)),
-                                  Slider(
-                                    value: _semitones.toDouble().clamp(-12.0, 12.0),
-                                    min: -12,
-                                    max: 12,
-                                    divisions: 24,
-                                    label: '${_semitones >= 0 ? '+' : ''}$_semitones',
-                                    onChanged: (v) {
-                                      setState(() {
-                                        _semitones = v.toDouble().clamp(-12.0, 12.0).round();
-                                      });
-                                      mainPlayer.setPitch(_pitchFromSemitones(_semitones));
-                                      alternatePlayer.setPitch(_pitchFromSemitones(_semitones));
-                                    },
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Pitch (semitones)',
+                                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                                ),
+                                                Slider(
+                                                  value: _semitones.toDouble().clamp(-12.0, 12.0),
+                                                  min: -12,
+                                                  max: 12,
+                                                  divisions: 24,
+                                                  label: '${_semitones >= 0 ? '+' : ''}$_semitones',
+                                                  onChanged: (v) {
+                                                    setState(() {
+                                                      _semitones = v.toDouble().clamp(-12.0, 12.0).round();
+                                                    });
+                                                    SoLoud.instance.filters.pitchShiftFilter.shift.value =
+                                                        _pitchFromSemitones(_semitones);
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _semitones = (_semitones + 1).clamp(-12, 12);
+                                                  });
+                                                  SoLoud.instance.filters.pitchShiftFilter.shift.value =
+                                                      _pitchFromSemitones(_semitones);
+                                                },
+                                                icon: Icon(Icons.keyboard_double_arrow_up),
+                                              ),
+                                              Container(
+                                                width: 60,
+                                                alignment: Alignment.center,
+                                                padding: EdgeInsets.symmetric(vertical: 4),
+                                                child: Text('${_semitones >= 0 ? '+' : ''}$_semitones'),
+                                              ),
+                                              IconButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _semitones = (_semitones - 1).clamp(-12, 12);
+                                                  });
+                                                  SoLoud.instance.filters.pitchShiftFilter.shift.value =
+                                                      _pitchFromSemitones(_semitones);
+                                                },
+                                                icon: Icon(Icons.keyboard_double_arrow_down),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      // Volume control
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text('Volume', style: TextStyle(fontWeight: FontWeight.w600)),
+                                                Slider(
+                                                  value: _muted ? 0.0 : _volume.clamp(0.0, 1.0),
+                                                  min: 0.0,
+                                                  max: 1.0,
+                                                  divisions: 20,
+                                                  label: (_muted ? 0.0 : _volume).toStringAsFixed(2),
+                                                  onChanged: (v) {
+                                                    setState(() {
+                                                      _volume = v;
+                                                      _muted = _volume <= 0.001;
+                                                      if (!_muted) _lastVolume = _volume;
+                                                    });
+                                                    SoLoud.instance.setVolume(soundHandle!, _volume);
+                                                    // mainPlayer.setVolume(_volume);
+                                                    // alternatePlayer.setVolume(_volume);
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Column(
+                                            children: [
+                                              IconButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    if (_muted) {
+                                                      // unmute
+                                                      _muted = false;
+                                                      _volume = _lastVolume > 0 ? _lastVolume : 0.5;
+                                                    } else {
+                                                      _muted = true;
+                                                      _lastVolume = _volume;
+                                                      _volume = 0.0;
+                                                    }
+                                                  });
+                                                  SoLoud.instance.setVolume(soundHandle!, _volume);
+                                                  // mainPlayer.setVolume(_volume);
+                                                  // alternatePlayer.setVolume(_volume);
+                                                },
+                                                icon: Icon(_muted ? Icons.volume_off : Icons.volume_up),
+                                              ),
+                                              Container(
+                                                width: 60,
+                                                alignment: Alignment.center,
+                                                child: Text((_muted ? 0.0 : _volume).toStringAsFixed(2)),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: saveSettings,
+                                        label: Text("Save Settings"),
+                                        icon: Icon(Icons.save),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                            SizedBox(width: 8),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _semitones = (_semitones + 1).clamp(-12, 12);
-                                    });
-                                    mainPlayer.setPitch(_pitchFromSemitones(_semitones));
-                                    alternatePlayer.setPitch(_pitchFromSemitones(_semitones));
-                                  },
-                                  icon: Icon(Icons.keyboard_double_arrow_up),
-                                ),
-                                Container(
-                                  width: 60,
-                                  alignment: Alignment.center,
-                                  padding: EdgeInsets.symmetric(vertical: 4),
-                                  child: Text('${_semitones >= 0 ? '+' : ''}$_semitones'),
-                                ),
-                                IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _semitones = (_semitones - 1).clamp(-12, 12);
-                                    });
-                                    mainPlayer.setPitch(_pitchFromSemitones(_semitones));
-                                    alternatePlayer.setPitch(_pitchFromSemitones(_semitones));
-                                  },
-                                  icon: Icon(Icons.keyboard_double_arrow_down),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        // Volume control
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Volume', style: TextStyle(fontWeight: FontWeight.w600)),
-                                  Slider(
-                                    value: _muted ? 0.0 : _volume.clamp(0.0, 1.0),
-                                    min: 0.0,
-                                    max: 1.0,
-                                    divisions: 20,
-                                    label: (_muted ? 0.0 : _volume).toStringAsFixed(2),
-                                    onChanged: (v) {
-                                      setState(() {
-                                        _volume = v;
-                                        _muted = _volume <= 0.001;
-                                        if (!_muted) _lastVolume = _volume;
-                                      });
-                                      mainPlayer.setVolume(_volume);
-                                      alternatePlayer.setVolume(_volume);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            Column(
-                              children: [
-                                IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      if (_muted) {
-                                        // unmute
-                                        _muted = false;
-                                        _volume = _lastVolume > 0 ? _lastVolume : 0.5;
-                                      } else {
-                                        _muted = true;
-                                        _lastVolume = _volume;
-                                        _volume = 0.0;
-                                      }
-                                    });
-                                    mainPlayer.setVolume(_volume);
-                                    alternatePlayer.setVolume(_volume);
-                                  },
-                                  icon: Icon(_muted ? Icons.volume_off : Icons.volume_up),
-                                ),
-                                Container(
-                                  width: 60,
-                                  alignment: Alignment.center,
-                                  child: Text((_muted ? 0.0 : _volume).toStringAsFixed(2)),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        TextButton.icon(onPressed: saveSettings, label: Text("Save Settings"), icon: Icon(Icons.save)),
-                      ],
-                    ),
-                  ),
-                ),
+                            ],
+                          );
+                        },
+                      )
+                    : Container(),
               ],
             ),
           ),

@@ -44,7 +44,6 @@ class _HomeListState extends State<HomeList> {
     if (await dataFile.exists()) {
       await dataFile.delete();
       print('Data file deleted successfully');
-      getFiles(false);
     } else {
       print('Data file does not exist');
     }
@@ -55,6 +54,17 @@ class _HomeListState extends State<HomeList> {
         await songFiles[i].delete();
       }
     }
+    if (settings?.playlists.where((item) => item.songIds.contains(fileId)).isNotEmpty ?? false) {
+      AppSettings newSettings = settings!;
+      for (int i = 0; i < newSettings.playlists.length; i++) {
+        newSettings.playlists[i].songIds = newSettings.playlists[i].songIds.where((id) => id != fileId).toList();
+      }
+      final directory = await getApplicationDocumentsDirectory();
+      final appSettingsPath = "${directory.path}/app/settings.txt";
+      final newSettingsJson = newSettings.jsonFromClass();
+      await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+    }
+    getFiles(false);
   }
 
   Future<void> deletePlaylist(String playlistId) async {
