@@ -38,14 +38,18 @@ class DataFile {
 class SongSettings {
   double pitch;
   double volume;
+  double bassBoost;
+  bool echoEnabled;
+  double echoDelay;
+  double echoDecay;
 
-  SongSettings(this.pitch, this.volume);
+  SongSettings(this.pitch, this.volume, this.bassBoost, this.echoEnabled, this.echoDelay, this.echoDecay);
 
   static SongSettings classFromTxt(dynamic json) {
-    return SongSettings(json["pitch"], json["volume"]);
+    return SongSettings(json["pitch"], json["volume"], json["bassBoost"], json["echoEnabled"], json["echoDelay"], json["echoDecay"]);
   }
 
   Map jsonFromClass() {
-    return {"pitch": pitch, "volume": volume};
+    return {"pitch": pitch, "volume": volume, "bassBoost": bassBoost, "echoEnabled": echoEnabled, "echoDelay": echoDelay, "echoDecay": echoDecay};
   }
 }

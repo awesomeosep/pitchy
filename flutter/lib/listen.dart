@@ -30,6 +30,10 @@ class _ListenState extends State<Listen> {
   int _semitones = 0;
   double _volume = 1.0;
   double _lastVolume = 1.0;
+  double _bassBoost = 0.0;
+  bool _echoEnabled = false;
+  double _echoDelay = 0.0;
+  double _echoDecay = 0.0;
   bool _muted = false;
   int trackIndex = 0;
   List<File> trackFiles = [];
@@ -227,6 +231,10 @@ class _ListenState extends State<Listen> {
 
       newSongData.settings.pitch = _pitchFromSemitones(_semitones);
       newSongData.settings.volume = _volume;
+      newSongData.settings.bassBoost = _bassBoost;
+      newSongData.settings.echoEnabled = _echoEnabled;
+      newSongData.settings.echoDelay = _echoDelay;
+      newSongData.settings.echoDecay = _echoDecay;
       songsData[songsData.indexWhere((item) => item.fileId == currentFileId)] = newSongData;
       await File(newSongData.dataPath).writeAsString(jsonEncode(newSongData.jsonFromClass()));
       print("file saved");
@@ -254,24 +262,38 @@ class _ListenState extends State<Listen> {
 
   void setSongDefaultSettings(String songId) async {
     SoLoud.instance.setPause(soundHandle!, true);
-    print(songsData.firstWhere((item) => item.fileId == songId).settings.volume);
-    print(songsData.firstWhere((item) => item.fileId == songId).settings.pitch);
-    SoLoud.instance.setVolume(soundHandle!, songsData.firstWhere((item) => item.fileId == songId).settings.volume);
-    if (!SoLoud.instance.filters.pitchShiftFilter.isActive) {
-      SoLoud.instance.filters.pitchShiftFilter.activate();
-    }
-    SoLoud.instance.filters.pitchShiftFilter.shift.value = songsData
-        .firstWhere((item) => item.fileId == songId)
-        .settings
-        .pitch;
-    SoLoud.instance.setLooping(soundHandle!, false);
-    // SoLoud.instance.seek(soundHandle!, Duration.zero);
     setState(() {
       _currentPos = SoLoud.instance.getPosition(soundHandle!);
       _semitones = (12 * (log(songsData.firstWhere((item) => item.fileId == songId).settings.pitch) / log(2))).round();
       _volume = songsData.firstWhere((item) => item.fileId == songId).settings.volume;
       _lastVolume = _volume;
+      _bassBoost = songsData.firstWhere((item) => item.fileId == songId).settings.bassBoost;
+      _echoEnabled = songsData.firstWhere((item) => item.fileId == songId).settings.echoEnabled;
+      _echoDelay = songsData.firstWhere((item) => item.fileId == songId).settings.echoDelay;
+      _echoDecay = songsData.firstWhere((item) => item.fileId == songId).settings.echoDecay;
     });
+    if (!SoLoud.instance.filters.pitchShiftFilter.isActive) {
+      SoLoud.instance.filters.pitchShiftFilter.activate();
+    }
+    if (!SoLoud.instance.filters.bassBoostFilter.isActive) {
+      SoLoud.instance.filters.bassBoostFilter.activate();
+    }
+    if (_echoEnabled) {
+      if (!SoLoud.instance.filters.echoFilter.isActive) {
+        SoLoud.instance.filters.echoFilter.activate();
+      }
+    } else {
+      if (SoLoud.instance.filters.echoFilter.isActive) {
+        SoLoud.instance.filters.echoFilter.deactivate();
+      }
+    }
+    SoLoud.instance.filters.echoFilter.delay.value = _echoDelay;
+    SoLoud.instance.filters.echoFilter.decay.value = _echoDecay;
+    SoLoud.instance.setVolume(soundHandle!, _volume);
+    SoLoud.instance.filters.pitchShiftFilter.shift.value = _pitchFromSemitones(_semitones);
+    SoLoud.instance.filters.bassBoostFilter.boost.value = _bassBoost;
+    SoLoud.instance.setLooping(soundHandle!, false);
+    // SoLoud.instance.seek(soundHandle!, Duration.zero);
   }
 
   final TextEditingController trackController = TextEditingController();
@@ -345,7 +367,6 @@ class _ListenState extends State<Listen> {
                                         leading: Icon(Icons.play_arrow),
                                         title: Text(song.fileName),
                                         onTap: () {
-                                          print("hello");
                                           changeSong(song.fileId, true);
                                           Navigator.pop(context);
                                         },
@@ -381,10 +402,9 @@ class _ListenState extends State<Listen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
           child: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.max,
               children: [
                 Text("Song ${songsData.indexWhere((item) => item.fileId == currentFileId) + 1} of ${songsData.length}"),
                 SizedBox(height: 16),
@@ -411,6 +431,7 @@ class _ListenState extends State<Listen> {
                           final Duration pos = snapshot.data?.getPosition(soundHandle!) ?? Duration.zero;
                           final Duration total = snapshot.data?.getLength(currentAudioSource!) ?? Duration.zero;
                           final bool paused = snapshot.data?.getPause(soundHandle!) ?? false;
+                          final bool echoFilterActivated = snapshot.data?.filters.echoFilter.isActive ?? false;
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,7 +481,12 @@ class _ListenState extends State<Listen> {
                                 children: [
                                   IconButton.filledTonal(
                                     onPressed: () {
-                                      SoLoud.instance.pauseSwitch(soundHandle!);
+                                      if (paused) {
+                                        SoLoud.instance.setPause(soundHandle!, false);
+                                      } else {
+                                        SoLoud.instance.setPause(soundHandle!, true);
+                                      }
+                                      // SoLoud.instance.pauseSwitch(soundHandle!);
                                     },
                                     icon: paused ? Icon(Icons.play_arrow) : Icon(Icons.pause),
                                   ),
@@ -515,6 +541,60 @@ class _ListenState extends State<Listen> {
                                                   ),
                                                 )
                                                 .toList(),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text('Volume', style: TextStyle(fontWeight: FontWeight.w600)),
+                                                Slider(
+                                                  value: _muted ? 0.0 : _volume.clamp(0.0, 1.0),
+                                                  min: 0.0,
+                                                  max: 1.0,
+                                                  divisions: 20,
+                                                  label: (_muted ? 0.0 : _volume).toStringAsFixed(2),
+                                                  onChanged: (v) {
+                                                    setState(() {
+                                                      _volume = v;
+                                                      _muted = _volume <= 0.001;
+                                                      if (!_muted) _lastVolume = _volume;
+                                                    });
+                                                    SoLoud.instance.setVolume(soundHandle!, _volume);
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Column(
+                                            children: [
+                                              IconButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    if (_muted) {
+                                                      // unmute
+                                                      _muted = false;
+                                                      _volume = _lastVolume > 0 ? _lastVolume : 0.5;
+                                                    } else {
+                                                      _muted = true;
+                                                      _lastVolume = _volume;
+                                                      _volume = 0.0;
+                                                    }
+                                                  });
+                                                  SoLoud.instance.setVolume(soundHandle!, _volume);
+                                                },
+                                                icon: Icon(_muted ? Icons.volume_off : Icons.volume_up),
+                                              ),
+                                              Container(
+                                                width: 60,
+                                                alignment: Alignment.center,
+                                                child: Text((_muted ? 0.0 : _volume).toStringAsFixed(2)),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -580,27 +660,25 @@ class _ListenState extends State<Listen> {
                                           ),
                                         ],
                                       ),
-                                      // Volume control
+                                      // Bass boost
                                       Row(
                                         children: [
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Text('Volume', style: TextStyle(fontWeight: FontWeight.w600)),
+                                                Text('Bass Boost', style: TextStyle(fontWeight: FontWeight.w600)),
                                                 Slider(
-                                                  value: _muted ? 0.0 : _volume.clamp(0.0, 1.0),
-                                                  min: 0.0,
-                                                  max: 1.0,
-                                                  divisions: 20,
-                                                  label: (_muted ? 0.0 : _volume).toStringAsFixed(2),
+                                                  value: _bassBoost,
+                                                  min: 1,
+                                                  max: 5,
+                                                  divisions: 8,
+                                                  label: _bassBoost.toStringAsFixed(2),
                                                   onChanged: (v) {
                                                     setState(() {
-                                                      _volume = v;
-                                                      _muted = _volume <= 0.001;
-                                                      if (!_muted) _lastVolume = _volume;
+                                                      _bassBoost = v;
                                                     });
-                                                    SoLoud.instance.setVolume(soundHandle!, _volume);
+                                                    SoLoud.instance.filters.bassBoostFilter.boost.value = _bassBoost;
                                                   },
                                                 ),
                                               ],
@@ -609,32 +687,119 @@ class _ListenState extends State<Listen> {
                                           SizedBox(width: 8),
                                           Column(
                                             children: [
-                                              IconButton(
-                                                onPressed: () {
-                                                  setState(() {
-                                                    if (_muted) {
-                                                      // unmute
-                                                      _muted = false;
-                                                      _volume = _lastVolume > 0 ? _lastVolume : 0.5;
-                                                    } else {
-                                                      _muted = true;
-                                                      _lastVolume = _volume;
-                                                      _volume = 0.0;
-                                                    }
-                                                  });
-                                                  SoLoud.instance.setVolume(soundHandle!, _volume);
-                                                },
-                                                icon: Icon(_muted ? Icons.volume_off : Icons.volume_up),
-                                              ),
                                               Container(
                                                 width: 60,
                                                 alignment: Alignment.center,
-                                                child: Text((_muted ? 0.0 : _volume).toStringAsFixed(2)),
+                                                child: Text(_bassBoost.toStringAsFixed(2)),
                                               ),
                                             ],
                                           ),
                                         ],
                                       ),
+                                      // Echo
+                                      SwitchListTile(
+                                        dense: true,
+                                        contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
+                                        title: const Text("Echo"),
+                                        value: _echoEnabled,
+                                        onChanged: (bool value) {
+                                          setState(() {
+                                            _echoEnabled = value;
+                                          });
+                                          if (echoFilterActivated && value == false) {
+                                            SoLoud.instance.filters.echoFilter.deactivate();
+                                          } else if (!echoFilterActivated && value == true) {
+                                            SoLoud.instance.filters.echoFilter.activate();
+                                          }
+                                        },
+                                      ),
+                                      _echoEnabled
+                                          ? Padding(
+                                            padding: const EdgeInsets.fromLTRB(16, 0, 0, 0),
+                                            child: Column(
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text(
+                                                              'Echo Delay (seconds)',
+                                                              style: TextStyle(fontWeight: FontWeight.w600),
+                                                            ),
+                                                            Slider(
+                                                              value: _echoDelay,
+                                                              min: 0,
+                                                              max: 5,
+                                                              divisions: 20,
+                                                              label: _echoDelay.toStringAsFixed(2),
+                                                              onChanged: (v) {
+                                                                setState(() {
+                                                                  _echoDelay = v;
+                                                                });
+                                                                SoLoud.instance.filters.echoFilter.delay.value =
+                                                                    _echoDelay;
+                                                              },
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Column(
+                                                        children: [
+                                                          Container(
+                                                            width: 60,
+                                                            alignment: Alignment.center,
+                                                            child: Text(_echoDelay.toStringAsFixed(2)),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text(
+                                                              'Echo Decay',
+                                                              style: TextStyle(fontWeight: FontWeight.w600),
+                                                            ),
+                                                            Slider(
+                                                              value: _echoDecay,
+                                                              min: 0,
+                                                              max: 1,
+                                                              divisions: 10,
+                                                              label: _echoDecay.toStringAsFixed(2),
+                                                              onChanged: (v) {
+                                                                setState(() {
+                                                                  _echoDecay = v;
+                                                                });
+                                                                SoLoud.instance.filters.echoFilter.decay.value =
+                                                                    _echoDecay;
+                                                              },
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Column(
+                                                        children: [
+                                                          Container(
+                                                            width: 60,
+                                                            alignment: Alignment.center,
+                                                            child: Text(_echoDecay.toStringAsFixed(2)),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                          )
+                                          : Container(),
                                       TextButton.icon(
                                         onPressed: saveSettings,
                                         label: Text("Save Settings"),
