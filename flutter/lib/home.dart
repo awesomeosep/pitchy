@@ -177,6 +177,7 @@ class _HomeListState extends State<HomeList> {
       }
     } catch (e) {
       setState(() {
+        gotFiles = true;
         loadingData = false;
       });
     }
@@ -222,7 +223,12 @@ class _HomeListState extends State<HomeList> {
                 Navigator.pop(context);
               },
             ),
-            ListTile(title: const Text("Settings"), onTap: () {}),
+            ListTile(
+              title: const Text("Settings"),
+              onTap: () {
+                Navigator.pushNamed(context, "/settings");
+              },
+            ),
           ],
         ),
       ),
@@ -363,7 +369,7 @@ class _HomeListState extends State<HomeList> {
                               ),
                               SizedBox(height: 16),
                               (gotFiles)
-                                  ? (settings!.playlists.isNotEmpty
+                                  ? (settings != null && settings!.playlists.isNotEmpty
                                         ? Column(
                                             crossAxisAlignment: CrossAxisAlignment.stretch,
                                             children: settings!.playlists.map((playlist) {
@@ -387,7 +393,7 @@ class _HomeListState extends State<HomeList> {
                                             }).toList(),
                                           )
                                         : Text("No playlists found"))
-                                  : Text("Refresh to load songs"),
+                                  : Text("Refresh to load playlists"),
                             ],
                           ),
                   ],

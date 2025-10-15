@@ -345,7 +345,7 @@ class _ListenState extends State<Listen> {
                           builder: (BuildContext context, ScrollController scrollController) {
                             return Container(
                               decoration: const BoxDecoration(
-                                color: Colors.white,
+                                // color: Colors.white,
                                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                               ),
                               child: Column(
@@ -355,7 +355,7 @@ class _ListenState extends State<Listen> {
                                     width: 40.0,
                                     height: 4.0,
                                     decoration: BoxDecoration(
-                                      color: Colors.grey[300],
+                                      // color: Colors.grey[300],
                                       borderRadius: BorderRadius.circular(2.0),
                                     ),
                                   ),
