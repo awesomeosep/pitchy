@@ -255,9 +255,9 @@ class _HomeListState extends State<HomeList> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text("Home"),
       ),
-      body: Padding(
-        padding: EdgeInsetsGeometry.all(16.0),
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
           child: viewMode == "uploads"
               ? Column(
                   mainAxisAlignment: MainAxisAlignment.start,

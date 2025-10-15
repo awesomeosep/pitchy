@@ -203,9 +203,9 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(thisPlaylistData?.playlistName ?? 'Playlist'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
           child: !loadingData
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

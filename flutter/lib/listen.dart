@@ -36,7 +36,6 @@ class _ListenState extends State<Listen> {
   double _echoDecay = 0.0;
   bool _muted = false;
   int trackIndex = 0;
-  List<File> trackFiles = [];
   String currentPlayer = "accompaniment";
   SoundHandle? soundHandle;
   AudioSource? currentAudioSource;
@@ -401,9 +400,9 @@ class _ListenState extends State<Listen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
-          child: SingleChildScrollView(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
                 Text("Song ${songsData.indexWhere((item) => item.fileId == currentFileId) + 1} of ${songsData.length}"),
@@ -427,12 +426,12 @@ class _ListenState extends State<Listen> {
                           if (snapshot.hasError) {
                             return const Text("Error loading audio");
                           }
-
+            
                           final Duration pos = snapshot.data?.getPosition(soundHandle!) ?? Duration.zero;
                           final Duration total = snapshot.data?.getLength(currentAudioSource!) ?? Duration.zero;
                           final bool paused = snapshot.data?.getPause(soundHandle!) ?? false;
                           final bool echoFilterActivated = snapshot.data?.filters.echoFilter.isActive ?? false;
-
+            
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.start,
