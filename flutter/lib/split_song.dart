@@ -94,7 +94,7 @@ class _SplitSongState extends State<SplitSong> {
         [],
         "2stems",
         DateTime.now(),
-        SongSettings(1.0, 1.0),
+        SongSettings(1.0, 1.0, 1.0, false, 1.0, 0.0),
       );
 
       // extract zip

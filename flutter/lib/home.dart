@@ -44,7 +44,6 @@ class _HomeListState extends State<HomeList> {
     if (await dataFile.exists()) {
       await dataFile.delete();
       print('Data file deleted successfully');
-      getFiles(false);
     } else {
       print('Data file does not exist');
     }
@@ -55,6 +54,17 @@ class _HomeListState extends State<HomeList> {
         await songFiles[i].delete();
       }
     }
+    if (settings?.playlists.where((item) => item.songIds.contains(fileId)).isNotEmpty ?? false) {
+      AppSettings newSettings = settings!;
+      for (int i = 0; i < newSettings.playlists.length; i++) {
+        newSettings.playlists[i].songIds = newSettings.playlists[i].songIds.where((id) => id != fileId).toList();
+      }
+      final directory = await getApplicationDocumentsDirectory();
+      final appSettingsPath = "${directory.path}/app/settings.txt";
+      final newSettingsJson = newSettings.jsonFromClass();
+      await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
+    }
+    getFiles(false);
   }
 
   Future<void> deletePlaylist(String playlistId) async {
@@ -167,6 +177,7 @@ class _HomeListState extends State<HomeList> {
       }
     } catch (e) {
       setState(() {
+        gotFiles = true;
         loadingData = false;
       });
     }
@@ -188,7 +199,7 @@ class _HomeListState extends State<HomeList> {
                 children: [
                   Text("Welcome to pitchy!"),
                   Text(
-                    "Here you can navigate to your uploaded songs, playlists, and groups!",
+                    "Here you can navigate to your uploaded songs, playlists, and app settings!",
                     style: TextStyle(fontSize: 14),
                   ),
                 ],
@@ -212,7 +223,12 @@ class _HomeListState extends State<HomeList> {
                 Navigator.pop(context);
               },
             ),
-            ListTile(title: const Text("Settings"), onTap: () {}),
+            ListTile(
+              title: const Text("Settings"),
+              onTap: () {
+                Navigator.pushNamed(context, "/settings");
+              },
+            ),
           ],
         ),
       ),
@@ -239,9 +255,9 @@ class _HomeListState extends State<HomeList> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text("Home"),
       ),
-      body: Padding(
-        padding: EdgeInsetsGeometry.all(16.0),
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
           child: viewMode == "uploads"
               ? Column(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -353,7 +369,7 @@ class _HomeListState extends State<HomeList> {
                               ),
                               SizedBox(height: 16),
                               (gotFiles)
-                                  ? (settings!.playlists.isNotEmpty
+                                  ? (settings != null && settings!.playlists.isNotEmpty
                                         ? Column(
                                             crossAxisAlignment: CrossAxisAlignment.stretch,
                                             children: settings!.playlists.map((playlist) {
@@ -377,7 +393,7 @@ class _HomeListState extends State<HomeList> {
                                             }).toList(),
                                           )
                                         : Text("No playlists found"))
-                                  : Text("Refresh to load songs"),
+                                  : Text("Refresh to load playlists"),
                             ],
                           ),
                   ],
