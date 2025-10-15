@@ -440,6 +440,7 @@ class _ListenState extends State<Listen> {
                               Column(
                                 children: [
                                   Slider(
+                                    inactiveColor: Colors.grey[200],
                                     value: draggingPosSlider
                                         ? ((total.inMilliseconds > 0
                                                   ? _currentPos.inMilliseconds / total.inMilliseconds

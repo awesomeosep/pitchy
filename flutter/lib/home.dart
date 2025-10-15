@@ -199,7 +199,7 @@ class _HomeListState extends State<HomeList> {
                 children: [
                   Text("Welcome to pitchy!"),
                   Text(
-                    "Here you can navigate to your uploaded songs, playlists, and groups!",
+                    "Here you can navigate to your uploaded songs, playlists, and app settings!",
                     style: TextStyle(fontSize: 14),
                   ),
                 ],
