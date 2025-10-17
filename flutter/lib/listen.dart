@@ -301,8 +301,6 @@ class _ListenState extends State<Listen> {
   Widget build(BuildContext context) {
     pageArguments = ModalRoute.of(context)!.settings.arguments as ListenArguments;
 
-    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -336,51 +334,86 @@ class _ListenState extends State<Listen> {
                       context: context,
                       isScrollControlled: true,
                       builder: (context) {
-                        return DraggableScrollableSheet(
-                          initialChildSize: 0.5,
-                          minChildSize: 0.25,
-                          maxChildSize: 0.9,
-                          expand: false,
-                          builder: (BuildContext context, ScrollController scrollController) {
-                            return Container(
-                              decoration: const BoxDecoration(
-                                // color: Colors.white,
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                              ),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    margin: const EdgeInsets.symmetric(vertical: 8.0),
-                                    width: 40.0,
-                                    height: 4.0,
-                                    decoration: BoxDecoration(
-                                      // color: Colors.grey[300],
-                                      borderRadius: BorderRadius.circular(2.0),
-                                    ),
+                        List<DataFile> mySongsData = songsData;
+                        return StatefulBuilder(
+                          builder: (BuildContext context, StateSetter mySetState) {
+                            return DraggableScrollableSheet(
+                              initialChildSize: 0.5,
+                              minChildSize: 0.25,
+                              maxChildSize: 0.9,
+                              expand: false,
+                              builder: (BuildContext context, ScrollController scrollController) {
+                                return Container(
+                                  decoration: const BoxDecoration(
+                                    // color: Colors.white,
+                                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                                   ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: songsData.map((song) {
-                                      return ListTile(
-                                        selected: currentFileId == song.fileId,
-                                        leading: Icon(Icons.play_arrow),
-                                        title: Text(song.fileName),
-                                        onTap: () {
-                                          changeSong(song.fileId, true);
-                                          Navigator.pop(context);
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                        width: 40.0,
+                                        height: 4.0,
+                                        decoration: BoxDecoration(
+                                          // color: Colors.grey[300],
+                                          borderRadius: BorderRadius.circular(2.0),
+                                        ),
+                                      ),
+                                      ReorderableListView(
+                                        onReorder: (oldIndex, newIndex) {
+                                          setState(() {
+                                            if (newIndex > oldIndex) {
+                                              newIndex -= 1;
+                                            }
+                                            final List<File> item1 = songFiles.removeAt(oldIndex);
+                                            final DataFile item2 = songsData.removeAt(oldIndex);
+                                            final String item3 = playlistData!.songIds.removeAt(oldIndex);
+                                            songFiles.insert(newIndex, item1);
+                                            songsData.insert(newIndex, item2);
+                                            playlistData!.songIds.insert(newIndex, item3);
+                                          });
+                                          mySetState(() {
+                                            mySongsData = songsData;
+                                          });
                                         },
-                                      );
-                                    }).toList(),
+                                        shrinkWrap: true,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        children: mySongsData
+                                            .asMap()
+                                            .map((idx, song) {
+                                              return MapEntry(
+                                                idx,
+                                                ListTile(
+                                                  key: Key(song.fileId + Random().nextInt(99999).toString()),
+                                                  selected: currentFileId == song.fileId,
+                                                  leading: ReorderableDragStartListener(
+                                                    index: idx,
+                                                    child: const Icon(Icons.drag_handle), // The part to drag
+                                                  ),
+                                                  trailing: const Icon(Icons.play_arrow),
+                                                  title: Text(song.fileName),
+                                                  onTap: () {
+                                                    changeSong(song.fileId, true);
+                                                    Navigator.pop(context);
+                                                  },
+                                                ),
+                                              );
+                                            })
+                                            .values
+                                            .toList(),
+                                      ),
+                                      Text("End of playlist"),
+                                    ],
                                   ),
-                                  Text("End of playlist"),
-                                ],
-                              ),
+                                );
+                              },
                             );
                           },
                         );
                       },
                     );
                   },
+
                   child: Text("Show queue"),
                 ),
               ),
@@ -426,12 +459,12 @@ class _ListenState extends State<Listen> {
                           if (snapshot.hasError) {
                             return const Text("Error loading audio");
                           }
-            
+
                           final Duration pos = snapshot.data?.getPosition(soundHandle!) ?? Duration.zero;
                           final Duration total = snapshot.data?.getLength(currentAudioSource!) ?? Duration.zero;
                           final bool paused = snapshot.data?.getPause(soundHandle!) ?? false;
                           final bool echoFilterActivated = snapshot.data?.filters.echoFilter.isActive ?? false;
-            
+
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.start,
@@ -715,8 +748,8 @@ class _ListenState extends State<Listen> {
                                       ),
                                       _echoEnabled
                                           ? Padding(
-                                            padding: const EdgeInsets.fromLTRB(16, 0, 0, 0),
-                                            child: Column(
+                                              padding: const EdgeInsets.fromLTRB(16, 0, 0, 0),
+                                              child: Column(
                                                 children: [
                                                   Row(
                                                     children: [
@@ -798,7 +831,7 @@ class _ListenState extends State<Listen> {
                                                   ),
                                                 ],
                                               ),
-                                          )
+                                            )
                                           : Container(),
                                       TextButton.icon(
                                         onPressed: saveSettings,

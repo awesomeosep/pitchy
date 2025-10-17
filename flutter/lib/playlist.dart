@@ -92,7 +92,7 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
     });
   }
 
-  void savePlaylistInfo() async {
+  void savePlaylistInfo(bool snackbar) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -112,7 +112,9 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
       await File(appSettingsPath).writeAsString(jsonEncode(newSettingsJson));
       thisPlaylistData!.playlistName = playlistNameController.text;
       thisPlaylistData!.playlistDescription = playlistNameController.text;
-      messenger.showSnackBar(SnackBar(content: Text("Playlist details saved!")));
+      if (snackbar) {
+        messenger.showSnackBar(SnackBar(content: Text("Playlist details saved!")));
+      }
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text("Error saving playlist details.")));
     }
@@ -239,7 +241,9 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                                 padding: WidgetStatePropertyAll(EdgeInsetsGeometry.fromLTRB(10, 0, 10, 0)),
                               ),
                               label: Text("Save"),
-                              onPressed: savePlaylistInfo,
+                              onPressed: () {
+                                savePlaylistInfo(true);
+                              },
                               icon: Icon(Icons.save),
                             ),
                           ],
@@ -301,22 +305,38 @@ class _OpenPlaylistState extends State<OpenPlaylist> {
                               ),
                             ),
                             SizedBox(height: 16),
-                            (gotFiles)
+                            (gotFiles && playlistId != null)
                                 ? (allUserSongsData.isNotEmpty && (thisPlaylistData?.songIds.isNotEmpty ?? false)
-                                      ? Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                      ? ReorderableListView(
+                                          physics: NeverScrollableScrollPhysics(),
+                                          shrinkWrap: true,
+                                          onReorder: (oldIndex, newIndex) => {
+                                            setState(() {
+                                              if (newIndex > oldIndex) {
+                                                newIndex -= 1;
+                                              }
+                                              final String item = thisPlaylistData!.songIds.removeAt(oldIndex);
+                                              thisPlaylistData!.songIds.insert(newIndex, item);
+                                            }),
+                                            savePlaylistInfo(false),
+                                          },
                                           children: thisPlaylistData!.songIds
                                               .asMap()
                                               .map((idx, songId) {
                                                 return MapEntry(
                                                   idx,
                                                   ListTile(
+                                                    key: ValueKey("${idx}_$songId"),
                                                     title: Text(
                                                       allUserSongsData
                                                           .firstWhere(
                                                             (item) => item.fileId == thisPlaylistData!.songIds[idx],
                                                           )
                                                           .fileName,
+                                                    ),
+                                                    leading: ReorderableDragStartListener(
+                                                      index: idx,
+                                                      child: const Icon(Icons.drag_handle), // The part to drag
                                                     ),
                                                     trailing: IconButton(
                                                       icon: Icon(Icons.delete),
