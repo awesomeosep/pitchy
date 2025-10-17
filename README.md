@@ -31,7 +31,6 @@ flutter run
 ```
 
 ## 📃 TODO Features:
-- Reorder playlists & queues
 - Swipe to refresh
 - Export edited audio files
 - Song "groups" (by artist, genre, etc)
